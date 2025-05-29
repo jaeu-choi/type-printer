@@ -8,8 +8,7 @@
 // type User = {
 //   id: number;
 //   name: string;
-//   isAdmin: boolean;
-// };
+//   isAdmin: boolean; // };
 
 // type NewUser = {
 //   [P in keyof User]: User[P];
@@ -214,8 +213,8 @@
 // };
 
 // type RequireName<T> = T extends any
-//   ? { name: T extends { name: infer N } ? N : never } & Partial<Omit<T, "name">>
-//   : never;
+//   ? { name: T extends { name: infer N } ? N : never } & Partial<Omit<T,
+//   "name">> : never;
 
 // interface RequiredNameUser extends RequireName<User> {
 //   sex: string;
@@ -328,7 +327,8 @@
 //   return result;
 // }
 
-// type filter = <T>(arr: T[], predicate: (item: T) => boolean) => T[]; // const people = [
+// type filter = <T>(arr: T[], predicate: (item: T) => boolean) => T[]; // const
+// people = [
 //   { name: "alice", age: 20 },
 //   { name: "Bob", age: 20 },
 //   { name: "Charlie", age: 30 },
@@ -359,7 +359,8 @@
 //   keyFn: (item: T) => K
 // ): Record<K, T[]> {
 //   const result = {} as Record<K, T[]>;
-//   //“지금은 비어있지만, 이건 결국 K 타입 키들을 가지고 T[] 값을 가지게 될 거야”
+//   //“지금은 비어있지만, 이건 결국 K 타입 키들을 가지고 T[] 값을 가지게 될
+//   거야”
 //   //라고 개발자가 약속한 것으로 받아들입니다
 
 //   for (const item of arr) {
@@ -421,7 +422,8 @@
 // console.log(process(123));
 // console.log(process({ name: "jaue" }));
 //
-// type ApiResponse<T> = T extends Error ? { success: false, error: T } : { success: true; data: T };
+// type ApiResponse<T> = T extends Error ? { success: false, error: T } : {
+// success: true; data: T };
 //
 // function handleResponse<T>(response: T): ApiResponse<T> {
 //   if (response instanceof Error) {
@@ -1025,38 +1027,72 @@
 //   return x;
 // };
 /*
-  페이커: 자기일 열심히 '잘'하면서 인성도 좋아서 까고싶어도 깔 수 가 없으며 결국에는 안티팬도 그의 바짓가랑이를 붙잡으며 찬양을 하게 되는 인간과 신 사이의 존재를 지칭하는 말.
-  기존의 패턴을 사용 -> 요구사항발생 -> 대응 -> 개발편의성측면의 불편 발생 -> 개발자불편지속 -> 새로운 패턴 방법의 제시 -> 기존 흥선대원군들에게 받아드려지지 않음 -> 페이커 등장 -> 페이커가 제시 -> 흥선대원군도 인정
-  ->표준은 아니지만 사실상의 표준 -> 지속 -> 표준 등재의 논의 시작 -> 엄근진적 논의 -> 실험적 기능 -> 호환성 검토 -> 가까스로 표준으로 등재 -> 레거시 프로젝트에서의 리팩터링시 사용건의 -> 부장님선에서 컷 -> 부장님: 소잡는데 는 소잡는 칼이 있는 법이고 닭잡는... 팡션이런거 쓰지마세요. ->
-  ->차세대 또는 새로운 프로젝트는 계속해서 새로운 패턴 사용 -> 레거시는 점점 사라짐 
+  페이커: 자기일 열심히 '잘'하면서 인성도 좋아서 까고싶어도 깔 수 가 없으며
+  결국에는 안티팬도 그의 바짓가랑이를 붙잡으며 찬양을 하게 되는 인간과 신 사이의
+  존재를 지칭하는 말. 기존의 패턴을 사용 -> 요구사항발생 -> 대응 ->
+  개발편의성측면의 불편 발생 -> 개발자불편지속 -> 새로운 패턴 방법의 제시 ->
+  기존 흥선대원군들에게 받아드려지지 않음 -> 페이커 등장 -> 페이커가 제시 ->
+  흥선대원군도 인정
+  ->표준은 아니지만 사실상의 표준 -> 지속 -> 표준 등재의 논의 시작 -> 엄근진적
+  논의 -> 실험적 기능 -> 호환성 검토 -> 가까스로 표준으로 등재 -> 레거시
+  프로젝트에서의 리팩터링시 사용건의 -> 부장님선에서 컷 -> 부장님: 소잡는데 는
+  소잡는 칼이 있는 법이고 닭잡는... 팡션이런거 쓰지마세요. ->
+  ->차세대 또는 새로운 프로젝트는 계속해서 새로운 패턴 사용 -> 레거시는 점점
+  사라짐
 
-  TS 에서 딸깍하면 사용되는 기능들을 기존 C++가 도달 했던 과정의 일부. 즉 TS에서의 고급 기능들은 표면상의 그것보다 복잡하다. 그 장막아래에 복잡성을 C++수준으로 설명하자면 정말로 소잡는데 쓰는 칼로 닭잡는 일이 발생.
-    예, type someType<T> = (q:T) => void; 이거하나를 c++ 로 설명하려면, 스마트포인터, 제너릭 , 함수객체, tempalte meta programming c++20 Concepts <- 머리 아픈 일의 연속.
-    아~ <T>에 무슨 타입넣으면 T자리에 그거 들가요 <- 세상간단
+  TS 에서 딸깍하면 사용되는 기능들을 기존 C++가 도달 했던 과정의 일부. 즉
+  TS에서의 고급 기능들은 표면상의 그것보다 복잡하다. 그 장막아래에 복잡성을
+  C++수준으로 설명하자면 정말로 소잡는데 쓰는 칼로 닭잡는 일이 발생. 예, type
+  someType<T> = (q:T) => void; 이거하나를 c++ 로 설명하려면, 스마트포인터,
+  제너릭 , 함수객체, tempalte meta programming c++20 Concepts <- 머리 아픈 일의
+  연속. 아~ <T>에 무슨 타입넣으면 T자리에 그거 들가요 <- 세상간단
     1. 타입스크립트 그자체의 의미
-    2. 탑다운 방식의 프로그래밍 언어적 성취. 고급기능 TS-> 다른거 안배워도 되지만 배운다면 그 때 더 도움 될 수 있음.
-  
+    2. 탑다운 방식의 프로그래밍 언어적 성취. 고급기능 TS-> 다른거 안배워도
+  되지만 배운다면 그 때 더 도움 될 수 있음.
+
 */
 
 /*
-  안녕하세요 반갑습니다. 이 강의는 타입스크립트의 고급기능에 대해 설명하는 강의입니다. 기본적인 자바스크립트의 동작 원리와, 문법은 알고 있다고 가정하고 있습니다. 또한 타입스크립트의 기본적인 문법들, 예를들면 타입별칭을 선언하는 것, 
-  인터페이스 키워드로 타입를 표현하는것,유니온타입이 무엇인지 리터럴 문자열타입이란 무엇인지에 대해서는 다루지 않거나 아주 짧게만 다룹니다.
-  이 강의는 타입스크립트 고급기능의 활용에 초점을 두고 있습니다.  단순히 고급문법을 같이 써보고 동작을 해설 하는 것, 컴파일러가 고급문법을 해석하는 것을 넘어서 실제로 원하는 수강생이 복잡한 타입을 설계하고
-  그것을 구현해내는것을 목표로합니다. 
+  안녕하세요 반갑습니다. 이 강의는 타입스크립트의 고급기능에 대해 설명하는
+  강의입니다. 기본적인 자바스크립트의 동작 원리와, 문법은 알고 있다고 가정하고
+  있습니다. 또한 타입스크립트의 기본적인 문법들, 예를들면 타입별칭을 선언하는
+  것, 인터페이스 키워드로 타입를 표현하는것,유니온타입이 무엇인지 리터럴
+  문자열타입이란 무엇인지에 대해서는 다루지 않거나 아주 짧게만 다룹니다. 이
+  강의는 타입스크립트 고급기능의 활용에 초점을 두고 있습니다.  단순히 고급문법을
+  같이 써보고 동작을 해설 하는 것, 컴파일러가 고급문법을 해석하는 것을 넘어서
+  실제로 원하는 수강생이 복잡한 타입을 설계하고 그것을 구현해내는것을
+  목표로합니다.
 
-  //타입스크립트는 자바스크립트의 슈퍼셋인 언어라, 정말 재밋게도 바닐라자바스크립트를 선호하는 사람들도 타입스크립트에 대한 평가가 좋지않고  c++같은 정적타입언어를 선호하는 사람들도 타입스크립트에 대한 평가가 좋지않습니다.
+  //타입스크립트는 자바스크립트의 슈퍼셋인 언어라, 정말 재밋게도
+  바닐라자바스크립트를 선호하는 사람들도 타입스크립트에 대한 평가가 좋지않고
+  c++같은 정적타입언어를 선호하는 사람들도 타입스크립트에 대한 평가가
+  좋지않습니다.
 
-  일부 바닐라 자바스크립트 선호자는 타입스크립트의 복잡성을 꺼리고, C++ 같은 정적 타입 언어 선호자는 타입스크립트의 동적 특성을 비판하기도 합니다
-  제생각은 타입스크립트는 현대언어의 고급기능을 아주 쉽게 맛보기 할 수 있는 훌륭한 언어입니다. 동시에  자바스크립트의 기본 철학을 훼손하지 않기 위해 노력한 흔적이 엿보이는 훌륭한 언어라고 생각합니다. 
+  일부 바닐라 자바스크립트 선호자는 타입스크립트의 복잡성을 꺼리고, C++ 같은
+  정적 타입 언어 선호자는 타입스크립트의 동적 특성을 비판하기도 합니다 제생각은
+  타입스크립트는 현대언어의 고급기능을 아주 쉽게 맛보기 할 수 있는 훌륭한
+  언어입니다. 동시에  자바스크립트의 기본 철학을 훼손하지 않기 위해 노력한
+  흔적이 엿보이는 훌륭한 언어라고 생각합니다.
 
-  AI를 통해 바이브 코딩이 활발하게 일어나는 지금 다른것보다 타입스크립트를 꼭 배워야 하고 그중에도 꼭 고급기능에 대해 배워야 할까? 하는 의문이 있으신 분들도 있을 것 같습니다. 
-  
-  ChatGPT와 같은 AI 챗봇 서비스는 출시 당시 주로 웹을 통해 제공되었습니다. 이는 웹의 안정적인 레거시 인프라, 높은 사용자 접근성, 그리고 서버 기반의 효율적인 대화 컨텍스트 동기화 덕분입니다. 
-  모바일 앱이나 데스크톱 앱은 이후 추가되었지만, 긴 대화에서 컨텍스트 동기화의 안정성은 웹이 여전히 강점을 가집니다. 즉 앞으로의 출시할 많은 서비스들도 웹이 서비스를 위한 플랫폼이 될거라고 생각합니다.
-  자바스크립트는 스크립팅 언어에 불과하지만 웹을 다루려면 결국 자바스크립트를 할 수 밖에 없다고 생각합니다. 자바스크립트는 DOM API 를 조작할 수 있는 유일한 언어입니다.
+  AI를 통해 바이브 코딩이 활발하게 일어나는 지금 다른것보다 타입스크립트를 꼭
+  배워야 하고 그중에도 꼭 고급기능에 대해 배워야 할까? 하는 의문이 있으신 분들도
+  있을 것 같습니다.
 
-  하지만 자바스크립트의 스크립팅언어적 특성에 더해 더 견고한 소프트웨어를 만들기 위해서는 타입시스템은 필수적입니다. 이는 더 구조적으로 안정적이며 재사용성있는 코드를 만드는데 필수 적이라 생각합니다. 어떤 사람들은 바닐라 자바스크립트만으로,
-  타입스크립트를 대체할 수 있다고 생각하지만 제생각에는 자바스크립트로는 할 수 없는 타입스크립트만의 철학과 기능이 있습니다. 그리고 이 강의를 마칠 때 쯤이면 확실하게 그 말을 증명할 수 있을 거라 확신합니다.
+  ChatGPT와 같은 AI 챗봇 서비스는 출시 당시 주로 웹을 통해 제공되었습니다. 이는
+  웹의 안정적인 레거시 인프라, 높은 사용자 접근성, 그리고 서버 기반의 효율적인
+  대화 컨텍스트 동기화 덕분입니다. 모바일 앱이나 데스크톱 앱은 이후
+  추가되었지만, 긴 대화에서 컨텍스트 동기화의 안정성은 웹이 여전히 강점을
+  가집니다. 즉 앞으로의 출시할 많은 서비스들도 웹이 서비스를 위한 플랫폼이
+  될거라고 생각합니다. 자바스크립트는 스크립팅 언어에 불과하지만 웹을 다루려면
+  결국 자바스크립트를 할 수 밖에 없다고 생각합니다. 자바스크립트는 DOM API 를
+  조작할 수 있는 유일한 언어입니다.
+
+  하지만 자바스크립트의 스크립팅언어적 특성에 더해 더 견고한 소프트웨어를 만들기
+  위해서는 타입시스템은 필수적입니다. 이는 더 구조적으로 안정적이며 재사용성있는
+  코드를 만드는데 필수 적이라 생각합니다. 어떤 사람들은 바닐라
+  자바스크립트만으로, 타입스크립트를 대체할 수 있다고 생각하지만 제생각에는
+  자바스크립트로는 할 수 없는 타입스크립트만의 철학과 기능이 있습니다. 그리고 이
+  강의를 마칠 때 쯤이면 확실하게 그 말을 증명할 수 있을 거라 확신합니다.
 
   이 강의는 크게 4가지 섹션으로 나뉩니다.
   0. 타입스크립트의 특징과 컴파일러의 동작.
@@ -1064,7 +1100,7 @@
   2. 타입의 확장
   3. 타입의 제한
   4. 타입의 단언
-  5. 실제 타입을 설계하는 법. 
+  5. 실제 타입을 설계하는 법.
 */
 
 // type Model = {
@@ -1326,8 +1362,9 @@ function vailidateUser(user: Required<User>) {
 // const adminUsers: PublicAdminUser[] = GetAdmins(users);
 // 우리는 UserPrivate이라는 전체 정보를 가진 내부 객체에서,
 // 타입스크립트의 Pick 유틸리티를 통해 민감 정보를 타입 수준에서 분리하였고,
-// 관리자(isAdmin: true)만 필터링한 뒤, id와 name만 노출되도록 안전하게 설계했습니다.
-// 이로써 컴파일 단계에서 민감 정보가 외부로 나가는 것을 차단하는 타입 기반 보안 계층을 구축했다고 볼 수 있습니다. ✅
+// 관리자(isAdmin: true)만 필터링한 뒤, id와 name만 노출되도록 안전하게
+// 설계했습니다. 이로써 컴파일 단계에서 민감 정보가 외부로 나가는 것을 차단하는
+// 타입 기반 보안 계층을 구축했다고 볼 수 있습니다. ✅
 
 // printer3.printType("PublicAdminUser");
 
@@ -1340,33 +1377,33 @@ function vailidateUser(user: Required<User>) {
 
 // type PublicUser = Pick<KUser, "id" | "name">;
 
-import { TypeAliasPrinter } from "./Printer";
-const printer = new TypeAliasPrinter("src/index.ts");
-interface MyUser {
-  id: number;
-  name: string;
-  email: string;
-  isAdmin: boolean;
-}
+// import { TypeAliasPrinter } from "./Printer";
+// const printer = new TypeAliasPrinter("src/index.ts");
+// interface MyUser {
+//   id: number;
+//   name: string;
+//   email: string;
+//   isAdmin: boolean;
+// }
 
-type PublicAdminUser = Pick<MyUser, "id" | "name">;
-const users: MyUser[] = [
-  { id: 1, name: "Alice", email: "alice@example.com", isAdmin: false },
-  { id: 2, name: "Bob", email: "bob@example.com", isAdmin: true },
-  { id: 3, name: "Charlie", email: "charlie@example.com", isAdmin: false },
-  { id: 4, name: "Dana", email: "dana@example.com", isAdmin: true },
-];
-function GetAdmins(users: MyUser[]): PublicAdminUser[] {
-  return users
-    .filter((u) => u.isAdmin)
-    .map(({ id, name }) => ({
-      id,
-      name,
-    }));
-}
+// type PublicAdminUser = Pick<MyUser, "id" | "name">;
+// const users: MyUser[] = [
+//   { id: 1, name: "Alice", email: "alice@example.com", isAdmin: false },
+//   { id: 2, name: "Bob", email: "bob@example.com", isAdmin: true },
+//   { id: 3, name: "Charlie", email: "charlie@example.com", isAdmin: false },
+//   { id: 4, name: "Dana", email: "dana@example.com", isAdmin: true },
+// ];
+// function GetAdmins(users: MyUser[]): PublicAdminUser[] {
+//   return users
+//     .filter((u) => u.isAdmin)
+//     .map(({ id, name }) => ({
+//       id,
+//       name,
+//     }));
+// }
 
-// console.log(GetAdmins(users));
-const adminUsers: PublicAdminUser[] = GetAdmins(users);
+// // console.log(GetAdmins(users));
+// const adminUsers: PublicAdminUser[] = GetAdmins(users);
 
 // printer.printType("PublicAdminUser");
 // interface Doja {
@@ -1408,8 +1445,370 @@ const adminUsers: PublicAdminUser[] = GetAdmins(users);
 
 // printer.printType("C", { verbose: true, final: true });
 
-function createLookup<K extends string, V>(entries: [K, V][]): Record<K, V> {
-  return Object.fromEntries(entries) as Record<K, V>;
+// function createLookup<K extends string, V>(entries: [K, V][]): Record<K, V> {
+//   return Object.fromEntries(entries) as Record<K, V>;
+// }
+
+// const colors = createLookup([["primary", "#fff0000"]]);
+
+// printer.printType("colors");
+// interface foo {
+//   role: string;
+// }
+// interface some {
+//   name: string;
+//   age: number;
+//   email: string;
+//   foo: foo;
+// }
+
+// interface some2 extends some {
+//   isAdmin: boolean;
+// }
+
+// printer.printType("some2", { expanded: true });
+
+// type Role = "admin" | "uers" | "guest";
+// type NodeAdminRole = Exclude<Role, "admin">;
+
+// // printer.printType("NodeAdminRole", { final: true });
+
+import { TypeAliasPrinter } from "./Printer";
+const printer = new TypeAliasPrinter("src/index.ts");
+// printer.printType("NodeAdminRole", { final: true });
+
+// type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>;
+
+// type Omit2<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>;
+
+// type Exclude<T, U> = T extends U ? never : T;
+
+// type Role = "admin" | "user" | "guest";
+// type NonAdminRole = Exclude<Role, "admin">;
+
+// printer.printType("NonAdminRole", { final: true });
+
+// interface A {
+//   x: number;
+// }
+// type T = A | { x: number };
+
+// type R = Exclude<T, A>;
+
+// printer.printType("R", { final: true });
+
+// interface A {
+//   kind: "A";
+//   x: number;
+// }
+// interface B {
+//   kind: "B";
+//   x: number;
+// }
+
+// type T = A | B;
+// type R = Exclude<T, { kind: "A" }>;
+// printer.printType("R", { verbose: true, final: true });
+
+// type Events =
+//   | { type: "click"; payload: MouseEvent }
+//   | { type: "submit"; payload: SubmitEvent };
+
+// type Exclude<T, U> = T extends U ? never : T;
+// type Extract<T, U> = T extends U ? T : never;
+// type Shape =
+//   | { kind: "circle"; radius: number }
+//   | { kind: "square"; size: number }
+//   | { kind: "triangle"; base: number; height: number };
+
+// type Circles = Extract<Shape, { kind: "circle" } | { kind: "square" }>;
+
+// printer.printType("Circles", { verbose: true });
+
+// interface User123 {
+//   id: number;
+//   name: string;
+//   eamil: string;
+//   isAdmin: boolean;
+// }
+
+// type PublicUser = Pick<User123, "id" | "name" | "eamil">;
+
+// printer.printType("PublicUser");
+
+// // type Record<K extends keyof any, T> = {
+// //   [P in K]: T;
+// // };
+
+// type UserRole = "admin" | "user" | "guest";
+
+// type RoleDescriptions = Record<UserRole, string>;
+
+// printer.printType("RoleDescriptions");
+
+type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>;
+
+// K 는 any의 키.
+// Exlude keyof T 중에 K 뺄게?그럼 남은거를
+// Pick T 중에 남은거 고를게?
+// interface User123 {
+//   id: number;
+//   name: string;
+//   email: string;
+//   isAdmin: boolean;
+// }
+
+// type PublicUser = Omit<User123, "email" | "isAdmin">
+//
+
+interface User321 {
+  id: string;
+  name: string;
+  email: string;
+  isAdmin: boolean;
 }
 
-const colors = createLookup([["primary", "#fff0000"]]);
+type PulbicUser = Omit<User321, "email" | "isAdmin">;
+
+interface User124 {
+  id: string;
+  name: string;
+  email: string;
+  isAdmin: boolean;
+}
+
+type PublicUser2 = Omit<User124, "email">;
+printer.printType("PublicUser2", { final: true });
+// type OverrideenEmailUser = Omit<User, "email"> & {
+//   email: { adress: string; verified: boolean; company: boolean };
+// };
+// const user: OverrideenEmailUser = {
+//   id: "1",
+//   name: "bob",
+//   password: "secrect",
+//   isAdmin: false,
+//   email: {
+//     adress: "bob@example.com",
+//     verified: true,
+//     company: true,
+//   },
+// };
+
+// type OptionalKeys<T> = {
+//   [K in keyof T]-?: undefined extends T[K] ? K : never;
+// }[keyof T];
+
+// type OnlyOptional<T> = Pick<T, OptionalKeys<T>>;
+
+// type User11 = {
+//   id: number;
+//   name?: string;
+//   email: string | undefined;
+//   phone?: string;
+// };
+// {
+//   name?: string;
+//   email: string | undefined;
+//   phone?: string;}[keyof T];
+
+// type Result = OptionalKeys<User11>;
+// type ReadonlyParital<T, K extends keyof T> = Readonly<Pick<T, K>> & Omit<T,
+// K>;
+
+// type ReadonlyPartial<T, K extends keyof T> = Readonly<Pick<T, K>> & Omit<T,
+// K>; type Person = {
+//   name: string;
+//   age: number;
+//   email: string;
+// };
+
+// type ReadonlyName = ReadonlyPartial<Person, "name">;
+
+// printer.printType("ReadonlyName");
+
+// const man: ReadonlyName = {
+//   name: "jaeu",
+//   age: 10,
+//   email: "naver",
+// };
+// man.name = "qwe";
+
+// type Partial<T> = {
+//   [P in keyof T]?: T[P];
+// };
+
+// type User1239 = {
+//   id: number;
+//   name: string;
+//   email: string;
+// };
+
+// function updateUser(id: number, update: Partial<User1239>) {
+//   console.log(`Updating User ${id}`, update);
+// }
+
+// updateUser(1, { name: "Alice" });
+
+// type PartialKeys<T, K extends keyof T> = Partial<Pick<T, K>> & Omit<T, K>;
+// type PartialKeys<T, K extends keyof T> = Partial<Pick<T, K>> & Omit<T, K>;
+
+// type ReturnType<T extends (...args: any) => any> = T extends (
+//   ...args: any
+// ) => infer R
+//   ? R
+//   : any;
+
+// function getUserInfo() {
+//   return { name: "Alice", age: 30 };
+// }
+
+// const getUserInfo = () => {
+//   return { name: "Alice", age: 30 };
+// };
+// type UserInfo = ReturnType<typeof getUserInfo>;
+
+// printer.printType("UserInfo");
+// type Parameters<T extends (...args: any) => any> = T extends (
+//   ...args: infer P
+// ) => any
+//   ? P
+//   : never;
+
+// function greet(name: string, age: number): void {
+//   console.log(`Hellow ${name}, You are ${age} years old`);
+// }
+
+// type GreetParams = Parameters<typeof greet>;
+// const someParam: GreetParams = ['hello', 10];
+// printer.printType('GreetParams');
+
+// function add(a: number, b: number): number {
+//   return a + b;
+// }
+
+// function callWithLog<T extends (...args: any) => any>(
+//   fn: T,
+//   ...args: Parameters<T>
+// ): ReturnType<T> {
+//   console.log("Calling with:", args);
+//   return fn(...args);
+// }
+
+// callWithLog(add, 3, 5);
+
+// type Awaited<T> = T extends null | undefined
+//   ? T
+//   : T extends Object & { then(onfulfilled: infer F, ...args: any): any }
+//   ? F extends (value: infer V, ...args: any) => any
+//     ? Awaited<V>
+//     : never
+//   : T;
+
+// 1. 널 또는 언디파인드 아니면 T
+// 1-1또는 T 는 Object인데 then함수를 가지고있는데 then 안에는 온풀필드 infer F,
+// ...args:any를 갖고있음
+// 1-2.면 F가 value: args 바든ㄴ 함수인데, 파라미터 중에 value 를 V로하는하면
+// Awaited<V> 로 재귀
+// 1-2함수가 아니면 never
+// 1-objec인데 then g마수를 ~~ 면 T
+
+// async function fetchUser() {
+//   return { name: "Alice", age: 30 };
+// }
+
+// type Fetched = ReturnType<typeof fetchUser>;
+
+// type Resolved = Awaited<Fetched>;
+
+// type Resolved = Awaited<Fetch>;
+// type Resolved = Awaited<Fetch>''
+
+// type OptionalKEys<T> = {
+//   [K in keyof T]-?: undefined extends T[K] ? K : never;
+// }[keyof T];
+
+// type Booleanize<T> = {
+//   [K in keyof T]: boolean;
+// };
+
+// type ServerResponse = {
+//   readonly id: string;
+//   readonly createAt: string;
+//   name: string;
+//   email: string;
+// };
+
+// type Mutable<T> = {
+//   -readonly [K in keyof T]: T[K];
+// };
+
+// type EditableUser = Mutable<ServerResponse>;
+
+// printer.printType("EditableUser");
+
+// type Nullable<T> = {
+//   [K in keyof T]: T[K] | null;
+// };
+
+// type User123 = {
+//   id: number;
+//   name: string;
+//   email: string;
+// };
+
+// type DBResult = Nullable<User123>;
+
+// type RemoveNull<T> = {
+//   [K in keyof T]: Exclude<T[K], null>;
+// };
+
+// type CleanUser = RemoveNull<DBResult>;
+
+// type EventMap = {
+//   click: { x: number; y: number };
+//   keydown: { key: string };
+//   focus: void;
+// };
+
+// type EventHandlers<T> = {
+//   [K in keyof T]: (event: T[K]) => void;
+// };
+
+// type Handlers = EventHandlers<EventMap>;
+
+// type PublicUser = Omit<User, "password" | "isAdmin">;
+// const user: PublicUser = {
+//   // id: 1,
+//   name: "Alice",
+//   email: "alice@example.com",
+// };
+
+// // 유틸리티 조합을 Optional 만 남기기
+// type OptionalKeys<T> = {
+//   [K in keyof T]-?: undefined extends T[K] ? K : never;
+// }[keyof T];
+
+// type OnlyOptional<T> = Pick<T, OptionalKeys<T>>;
+// type RequiredOnly<T> = Omit<T, OptionalKeys<T>>;
+
+// type OptionalKeys2<T> = {
+//   [K in keyof T]-?: undefined extends T[K] ? K : never;
+// };
+
+// // type Keys = keyof T;
+
+// type User = {
+//   name: string;
+//   age: number;
+// };
+// interface DT {
+//   name: string;
+//   age: string | number;
+//   rock: () => void;
+// }
+
+// type UserKeys = keyof User;
+
+// type DTKeys = keyof DT;
+
+// printer.printType("DT");
