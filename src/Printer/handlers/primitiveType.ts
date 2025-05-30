@@ -7,11 +7,27 @@ export class PrimitiveTypeHandler implements TypeHandler {
   }
 
   handle(node: ts.TypeNode, context: TypeCollectionContext): TypeStructure {
-    return {
+    const finalTypeString = node.getText();
+
+    const structure: TypeStructure = {
       type: "primitive",
-      value: node.getText(),
-      metadata: { isBuiltin: true },
+      value: finalTypeString,
+      metadata: {
+        isBuiltin: true,
+        finalTypeString,
+      },
     };
+
+    // 원시 타입은 expanded 모드에서도 단순하게 표시
+    if (!context.expanded) {
+      structure.computedResult = {
+        type: "primitive",
+        value: finalTypeString,
+        metadata: { finalTypeString },
+      };
+    }
+
+    return structure;
   }
 
   private isPrimitiveOrBuiltinTypeNode(node: ts.TypeNode): boolean {

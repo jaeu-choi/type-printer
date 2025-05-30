@@ -1,5 +1,5 @@
 export interface PrintOptions {
-  expanded?: boolean;
+  expanded?: boolean; // true: 명목적 과정 + 참조 추적 표시, false: 최종 결과만
   verbose?: boolean;
   final?: boolean;
   format?: "tree" | "compact" | "expanded";
@@ -32,8 +32,9 @@ export interface TypeStructure {
     | "template";
   name?: string;
   value?: string;
-  children?: TypeStructure[];
+  children?: TypeStructure[]; // 명목적 과정 (expanded 모드에서만 사용)
   properties?: ObjectProperty[];
+  computedResult?: TypeStructure; // 최종 계산 결과 (기본 표시용)
   metadata?: {
     isBuiltin?: boolean;
     typeArgs?: string[];
@@ -42,6 +43,7 @@ export interface TypeStructure {
     condition?: string;
     referencePath?: string[];
     originalTypeName?: string;
+    finalTypeString?: string; // TypeChecker로 계산된 최종 타입 문자열
     [key: string]: any;
   };
 }
@@ -69,9 +71,13 @@ export interface TypeCollectionContext {
   genericContext?: Map<string, TypeStructure>;
   isInstantiated: boolean;
   sourceFile: import("typescript").SourceFile;
+  expanded: boolean; // 명목적 과정 표시 여부
 }
 
 export interface TypeHandler {
   canHandle(node: import("typescript").TypeNode): boolean;
-  handle(node: import("typescript").TypeNode, context: TypeCollectionContext): TypeStructure;
+  handle(
+    node: import("typescript").TypeNode,
+    context: TypeCollectionContext
+  ): TypeStructure;
 }

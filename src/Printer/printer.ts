@@ -1,12 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as ts from "typescript";
-import { 
-  PrintOptions, 
-  AnalyzableKind, 
-  TypeInfo, 
-  TypeCollectionContext, 
-  TypeStructure 
+import {
+  PrintOptions,
+  AnalyzableKind,
+  TypeInfo,
+  TypeCollectionContext,
+  TypeStructure,
 } from "./types";
 import { TypeFormatter } from "./formatter";
 import { TypeStructureCollector } from "./handlers";
@@ -38,6 +38,7 @@ export class TypeAliasPrinter {
 
   public printType(name: string, options?: PrintOptions): void {
     const maxDepth = options?.maxDepth || 10;
+    const expanded = options?.expanded || false; // 기본값: 결과만 표시
     const { typeName, isInstantiated, typeArgs } = this.parseTypeRequest(name);
     const kind = this.identifyKind(typeName);
     console.log("Kind:", kind);
@@ -53,19 +54,20 @@ export class TypeAliasPrinter {
         ? this.createGenericContext(typeName, typeArgs)
         : undefined,
       sourceFile: this.sourceFile,
+      expanded, // 새로 추가
     };
 
     switch (kind) {
       case AnalyzableKind.TYPEALIAS:
         const typeInfo = this.collectTypeAliasInfo(typeName, context);
-        const formatted = this.formatter.format(typeInfo, options?.format);
+        const formatted = this.formatter.format(typeInfo, options);
         console.log(formatted);
         break;
       case AnalyzableKind.INTERFACE:
         const interfaceInfo = this.collectInterfaceInfo(typeName, context);
         const interfaceFormatted = this.formatter.format(
           interfaceInfo,
-          options?.format
+          options
         );
         console.log(interfaceFormatted);
         break;
@@ -149,7 +151,21 @@ export class TypeAliasPrinter {
     }
 
     const originalSource = interfaceDecl.getText();
-    const structure = this.collectInterfaceStructure(interfaceDecl, context);
+
+    // 최종 계산된 타입 가져오기
+    const symbol = this.checker.getSymbolAtLocation(interfaceDecl.name);
+    const finalType = symbol
+      ? this.checker.getTypeOfSymbolAtLocation(symbol, interfaceDecl)
+      : null;
+    const finalTypeString = finalType
+      ? this.checker.typeToString(finalType)
+      : "";
+
+    const structure = this.collectInterfaceStructure(
+      interfaceDecl,
+      context,
+      finalTypeString
+    );
 
     return {
       kind: AnalyzableKind.INTERFACE,
@@ -161,7 +177,8 @@ export class TypeAliasPrinter {
 
   private collectInterfaceStructure(
     node: ts.InterfaceDeclaration,
-    context: TypeCollectionContext
+    context: TypeCollectionContext,
+    finalTypeString: string
   ): TypeStructure {
     const properties = [];
 
@@ -187,11 +204,25 @@ export class TypeAliasPrinter {
       }
     }
 
-    return {
+    const structure: TypeStructure = {
       type: "object",
       properties,
-      metadata: { originalText: node.getText() },
+      metadata: {
+        originalText: node.getText(),
+        finalTypeString,
+      },
     };
+
+    // 최종 결과를 computedResult에 저장 (간소화된 형태)
+    if (!context.expanded) {
+      structure.computedResult = {
+        type: "object",
+        properties,
+        metadata: { finalTypeString },
+      };
+    }
+
+    return structure;
   }
 
   private collectTypeAliasInfo(
@@ -208,7 +239,24 @@ export class TypeAliasPrinter {
     }
 
     const originalSource = aliasDecl.getText();
+
+    // 최종 계산된 타입 가져오기
+    const symbol = this.checker.getSymbolAtLocation(aliasDecl.name);
+    const finalType = symbol
+      ? this.checker.getTypeOfSymbolAtLocation(symbol, aliasDecl)
+      : null;
+    const finalTypeString = finalType
+      ? this.checker.typeToString(finalType)
+      : "";
+
     const structure = this.collector.collect(aliasDecl.type, context);
+
+    // 최종 타입 정보 추가
+    if (structure.metadata) {
+      structure.metadata.finalTypeString = finalTypeString;
+    } else {
+      structure.metadata = { finalTypeString };
+    }
 
     return {
       kind: AnalyzableKind.TYPEALIAS,

@@ -1,16 +1,23 @@
-import { TypeInfo, TypeStructure } from "./types";
+import { TypeInfo, TypeStructure, PrintOptions } from "./types";
 
 export class TypeFormatter {
   private readonly DEFAULT_WIDTH = 50;
   private readonly INDENT_SIZE = 2;
 
-  format(
-    info: TypeInfo,
-    style: "tree" | "compact" | "expanded" = "tree"
-  ): string {
+  format(info: TypeInfo, options?: PrintOptions): string {
+    const expanded = options?.expanded || false;
     const separator = "=".repeat(this.calculateOptimalWidth(info));
     const header = this.formatHeader(info.name, info.originalSource);
-    const body = this.formatStructure(info.structure, style, 0);
+
+    let body: string;
+
+    if (expanded) {
+      // expanded 모드: 명목적 과정 + 최종 결과 모두 표시
+      body = this.formatExpandedView(info.structure, info.name);
+    } else {
+      // 기본 모드: 최종 결과만 간단히 표시
+      body = this.formatResultView(info.structure, info.name);
+    }
 
     return [
       separator,
@@ -20,6 +27,106 @@ export class TypeFormatter {
       body,
       separator,
     ].join("\n");
+  }
+
+  private formatResultView(structure: TypeStructure, typeName: string): string {
+    // 최종 계산 결과만 표시
+    if (structure.computedResult) {
+      return this.formatStructure(structure.computedResult, false, 0);
+    }
+
+    // computedResult가 없으면 finalTypeString 사용
+    if (structure.metadata?.finalTypeString) {
+      return this.formatFinalTypeString(structure.metadata.finalTypeString);
+    }
+
+    // 둘 다 없으면 기본 구조 표시
+    return this.formatStructure(structure, false, 0);
+  }
+
+  private formatExpandedView(
+    structure: TypeStructure,
+    typeName: string
+  ): string {
+    const parts: string[] = [];
+
+    // 명목적 과정 표시
+    if (structure.children && structure.children.length > 0) {
+      parts.push("[Process]");
+      structure.children.forEach((child) => {
+        parts.push(this.formatStructure(child, true, 1));
+      });
+    }
+
+    // 최종 결과 표시
+    parts.push("[Result]");
+    if (structure.computedResult) {
+      parts.push(this.formatStructure(structure.computedResult, true, 1));
+    } else if (structure.metadata?.finalTypeString) {
+      parts.push(
+        this.getIndent(1) +
+          this.formatFinalTypeString(structure.metadata.finalTypeString)
+      );
+    } else {
+      parts.push(this.formatStructure(structure, true, 1));
+    }
+
+    return parts.join("\n");
+  }
+
+  private formatFinalTypeString(finalTypeString: string): string {
+    // 복잡한 타입 문자열을 적절히 파싱해서 표시
+    try {
+      // 간단한 객체 타입 파싱
+      if (finalTypeString.startsWith("{") && finalTypeString.endsWith("}")) {
+        return this.formatObjectTypeString(finalTypeString);
+      }
+
+      // Union 타입 파싱
+      if (finalTypeString.includes(" | ")) {
+        return this.formatUnionTypeString(finalTypeString);
+      }
+
+      // Intersection 타입 파싱
+      if (finalTypeString.includes(" & ")) {
+        return this.formatIntersectionTypeString(finalTypeString);
+      }
+
+      // 기본: 그대로 표시
+      return finalTypeString;
+    } catch (error) {
+      return finalTypeString;
+    }
+  }
+
+  private formatObjectTypeString(typeString: string): string {
+    // "{ name: string; age: number }" 형태를 파싱
+    const content = typeString.slice(1, -1).trim(); // 중괄호 제거
+    if (!content) return "{}";
+
+    const properties = content
+      .split(";")
+      .map((prop) => prop.trim())
+      .filter(Boolean);
+    const formattedProps = properties.map(
+      (prop) => `${this.getIndent(1)}${prop};`
+    );
+
+    return `{\n${formattedProps.join("\n")}\n}`;
+  }
+
+  private formatUnionTypeString(typeString: string): string {
+    const types = typeString.split(" | ").map((t) => t.trim());
+    const formattedTypes = types.map((type) => `${this.getIndent(1)}${type}`);
+
+    return `[Union]\n${formattedTypes.join("\n")}`;
+  }
+
+  private formatIntersectionTypeString(typeString: string): string {
+    const types = typeString.split(" & ").map((t) => t.trim());
+    const formattedTypes = types.map((type) => `${this.getIndent(1)}${type}`);
+
+    return `[Intersection]\n${formattedTypes.join("\n")}`;
   }
 
   private calculateOptimalWidth(info: TypeInfo): number {
@@ -50,7 +157,7 @@ export class TypeFormatter {
 
   private formatStructure(
     structure: TypeStructure,
-    style: string,
+    expanded: boolean,
     depth: number
   ): string {
     const indent = this.getIndent(depth);
@@ -64,10 +171,10 @@ export class TypeFormatter {
 
       case "operator":
         const operatorHeader = `${indent}[${structure.metadata?.operator}]`;
-        if (structure.children && structure.children.length > 0) {
+        if (expanded && structure.children && structure.children.length > 0) {
           const childFormatted = this.formatStructure(
             structure.children[0],
-            style,
+            expanded,
             depth + 1
           );
           return `${operatorHeader}\n${childFormatted}`;
@@ -76,15 +183,15 @@ export class TypeFormatter {
 
       case "access":
         const accessHeader = `${indent}[IndexedAccess]`;
-        if (structure.children && structure.children.length >= 2) {
+        if (expanded && structure.children && structure.children.length >= 2) {
           const objFormatted = this.formatStructure(
             structure.children[0],
-            style,
+            expanded,
             depth + 1
           );
           const indexFormatted = this.formatStructure(
             structure.children[1],
-            style,
+            expanded,
             depth + 1
           );
           return `${accessHeader}\n${objFormatted}\n${indexFormatted}`;
@@ -93,12 +200,12 @@ export class TypeFormatter {
 
       case "conditional":
         const condHeader = `${indent}[Conditional]`;
-        if (structure.children && structure.children.length >= 4) {
+        if (expanded && structure.children && structure.children.length >= 4) {
           const parts = structure.children.map((child, i) => {
             const labels = ["Check", "Extends", "True", "False"];
             return `${indent}  [${labels[i]}]\n${this.formatStructure(
               child,
-              style,
+              expanded,
               depth + 2
             )}`;
           });
@@ -112,9 +219,9 @@ export class TypeFormatter {
           : "";
         const refHeader = `${indent}${structure.name}${typeArgs}`;
 
-        if (structure.children && structure.children.length > 0) {
+        if (expanded && structure.children && structure.children.length > 0) {
           const childrenFormatted = structure.children
-            .map((child) => this.formatStructure(child, style, depth + 1))
+            .map((child) => this.formatStructure(child, expanded, depth + 1))
             .join("\n");
           return `${refHeader}\n${childrenFormatted}`;
         }
@@ -123,7 +230,7 @@ export class TypeFormatter {
       case "union":
         return this.formatUnionOrIntersection(
           structure,
-          style,
+          expanded,
           depth,
           "[Union]"
         );
@@ -131,17 +238,17 @@ export class TypeFormatter {
       case "intersection":
         return this.formatUnionOrIntersection(
           structure,
-          style,
+          expanded,
           depth,
           "[Intersection]"
         );
 
       case "array":
         const arrayHeader = `${indent}Array`;
-        if (structure.children && structure.children.length > 0) {
+        if (expanded && structure.children && structure.children.length > 0) {
           const elementFormatted = this.formatStructure(
             structure.children[0],
-            style,
+            expanded,
             depth + 1
           );
           return `${arrayHeader}\n${elementFormatted}`;
@@ -149,7 +256,7 @@ export class TypeFormatter {
         return arrayHeader;
 
       case "object":
-        return this.formatObject(structure, style, depth);
+        return this.formatObject(structure, expanded, depth);
 
       default:
         return `${indent}${structure.metadata?.originalText || "Unknown"}`;
@@ -158,7 +265,7 @@ export class TypeFormatter {
 
   private formatUnionOrIntersection(
     structure: TypeStructure,
-    style: string,
+    expanded: boolean,
     depth: number,
     label: string
   ): string {
@@ -169,16 +276,29 @@ export class TypeFormatter {
       return header;
     }
 
-    const childrenFormatted = structure.children
-      .map((child) => this.formatStructure(child, style, depth + 1))
-      .join("\n");
-
-    return `${header}\n${childrenFormatted}`;
+    if (expanded) {
+      const childrenFormatted = structure.children
+        .map((child) => this.formatStructure(child, expanded, depth + 1))
+        .join("\n");
+      return `${header}\n${childrenFormatted}`;
+    } else {
+      // 기본 모드에서는 computedResult나 finalTypeString 사용
+      if (structure.computedResult) {
+        return this.formatStructure(structure.computedResult, false, depth);
+      } else if (structure.metadata?.finalTypeString) {
+        return `${indent}${structure.metadata.finalTypeString}`;
+      } else {
+        const childrenFormatted = structure.children
+          .map((child) => this.formatStructure(child, false, depth + 1))
+          .join("\n");
+        return `${header}\n${childrenFormatted}`;
+      }
+    }
   }
 
   private formatObject(
     structure: TypeStructure,
-    style: string,
+    expanded: boolean,
     depth: number
   ): string {
     const braceIndent = this.getIndent(depth);
@@ -194,7 +314,7 @@ export class TypeFormatter {
     const properties = structure.properties.map((prop) => {
       const optional = prop.optional ? "?" : "";
       const readonly = prop.readonly ? "readonly " : "";
-      const propType = this.formatStructure(prop.type, style, 0).trim();
+      const propType = this.formatStructure(prop.type, expanded, 0).trim();
 
       return `${propIndent}${readonly}${prop.name}${optional}: ${propType};`;
     });

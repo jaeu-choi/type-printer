@@ -15,57 +15,255 @@ export class IndexAccessHandler implements TypeHandler {
   handle(node: ts.TypeNode, context: TypeCollectionContext): TypeStructure {
     const indexNode = node as ts.IndexedAccessTypeNode;
 
-    // Extract original type info from AST to preserve reference information
+    // 최종 계산된 타입 가져오기 (TypeScript 컴파일러가 계산한 결과)
+    const finalType = context.checker.getTypeFromTypeNode(indexNode);
+    const finalTypeString = context.checker.typeToString(finalType);
+
+    // 명목적 과정: 원본 AST에서 참조 추적 정보 추출
+    const nominalProcess = this.extractNominalProcess(indexNode, context);
+
+    // 최종 결과 계산
+    const computedResult = this.computeFinalIndexAccessResult(
+      finalType,
+      context,
+      indexNode
+    );
+
+    const structure: TypeStructure = {
+      type: "access",
+      metadata: {
+        originalText: indexNode.getText(),
+        finalTypeString,
+      },
+    };
+
+    if (context.expanded) {
+      // expanded 모드: 명목적 과정 + 최종 결과 모두 표시
+      structure.children = nominalProcess;
+      structure.computedResult = computedResult;
+    } else {
+      // 기본 모드: 최종 결과만 표시
+      structure.computedResult = computedResult;
+    }
+
+    return structure;
+  }
+
+  private extractNominalProcess(
+    indexNode: ts.IndexedAccessTypeNode,
+    context: TypeCollectionContext
+  ): TypeStructure[] {
+    const process: TypeStructure[] = [];
+
+    // 1. 객체 타입 참조 정보
+    const objectTypeStructure = new TypeStructureCollector().collect(
+      indexNode.objectType,
+      context
+    );
+    process.push({
+      type: "reference",
+      name: "[ObjectType]",
+      children: [objectTypeStructure],
+      metadata: { originalText: indexNode.objectType.getText() },
+    });
+
+    // 2. 인덱스 타입 정보
+    const indexTypeStructure = new TypeStructureCollector().collect(
+      indexNode.indexType,
+      context
+    );
+    process.push({
+      type: "reference",
+      name: "[IndexType]",
+      children: [indexTypeStructure],
+      metadata: { originalText: indexNode.indexType.getText() },
+    });
+
+    // 3. 원본 타입 정보 (AST에서 추출한 참조 추적)
     const originalTypeInfo = this.extractOriginalTypeInfo(indexNode, context);
+    if (originalTypeInfo.length > 0) {
+      const referenceTrace = originalTypeInfo.map((info, index) => ({
+        type: "reference" as const,
+        name: info.typeName
+          ? `[Reference: ${info.typeName}]`
+          : `[Member ${index}]`,
+        metadata: {
+          originalText: info.typeNode?.getText() || "",
+          originalTypeName: info.typeName,
+        },
+      }));
 
-    const type = context.checker.getTypeFromTypeNode(indexNode);
+      process.push({
+        type: "reference",
+        name: "[ReferenceTrace]",
+        children: referenceTrace,
+        metadata: { originalText: "Reference tracking from AST" },
+      });
+    }
 
-    if (type.isUnion()) {
-      const literalTypes = type.types.map((unionMember, index) => {
-        // Use original type info if available, otherwise fall back to existing method
-        const originalInfo = originalTypeInfo[index];
-        if (originalInfo) {
-          return this.createTypeStructureWithOriginalInfo(
-            unionMember,
-            originalInfo,
-            context
-          );
-        }
-        return this.createTypeStructureFromType(unionMember, context);
+    return process;
+  }
+
+  private computeFinalIndexAccessResult(
+    finalType: ts.Type,
+    context: TypeCollectionContext,
+    indexNode: ts.IndexedAccessTypeNode
+  ): TypeStructure {
+    const finalTypeString = context.checker.typeToString(finalType);
+
+    // Union 타입인 경우 (예: User["age"] = number | Client)
+    if (finalType.isUnion()) {
+      const finalMembers = finalType.types.map((memberType) => {
+        return this.createFinalMemberStructure(memberType, context);
       });
 
       return {
         type: "union",
-        children: literalTypes,
-        metadata: { originalText: indexNode.getText() },
+        children: finalMembers,
+        metadata: {
+          finalTypeString,
+          originalText: indexNode.getText(),
+        },
       };
     } else {
-      const originalInfo = originalTypeInfo[0];
-      if (originalInfo) {
-        return this.createTypeStructureWithOriginalInfo(
-          type,
-          originalInfo,
-          context
-        );
-      }
-      return this.createTypeStructureFromType(type, context);
+      // 단일 타입인 경우
+      return this.createFinalMemberStructure(finalType, context);
     }
   }
 
-  // Extract type information from original AST
+  private createFinalMemberStructure(
+    memberType: ts.Type,
+    context: TypeCollectionContext
+  ): TypeStructure {
+    const memberTypeString = context.checker.typeToString(memberType);
+
+    // 객체 타입인 경우
+    if (memberType.getProperties && memberType.getProperties().length > 0) {
+      const properties = this.collectFinalProperties(memberType, context);
+      return {
+        type: "object",
+        properties,
+        metadata: { finalTypeString: memberTypeString },
+      };
+    }
+
+    // 사용자 정의 타입 참조인 경우 (심볼이 있는 경우)
+    if (memberType.symbol && memberType.symbol.declarations) {
+      const declaration = memberType.symbol.declarations[0];
+      let typeName = "Unknown";
+
+      if (ts.isTypeAliasDeclaration(declaration) && declaration.name) {
+        typeName = declaration.name.text;
+      } else if (ts.isInterfaceDeclaration(declaration) && declaration.name) {
+        typeName = declaration.name.text;
+      } else if (ts.isClassDeclaration(declaration) && declaration.name) {
+        typeName = declaration.name.text;
+      }
+
+      // 내장 타입 체크
+      if (this.isBuiltinType(typeName)) {
+        return {
+          type: "reference",
+          name: typeName,
+          metadata: {
+            isBuiltin: true,
+            finalTypeString: memberTypeString,
+          },
+        };
+      }
+
+      // 사용자 정의 타입인 경우
+      const structure: TypeStructure = {
+        type: "reference",
+        name: `[${typeName}]`,
+        metadata: {
+          isBuiltin: false,
+          finalTypeString: memberTypeString,
+          originalTypeName: typeName,
+        },
+      };
+
+      // 컨텍스트에 따라 확장 여부 결정
+      if (context.expanded && this.shouldExpandReference(context)) {
+        const expanded = this.expandTypeDeclaration(
+          declaration,
+          typeName,
+          context
+        );
+        if (expanded) {
+          structure.children = [expanded];
+        }
+      }
+
+      return structure;
+    }
+
+    // 원시 타입인 경우
+    return {
+      type: "primitive",
+      value: memberTypeString,
+      metadata: { finalTypeString: memberTypeString },
+    };
+  }
+
+  private collectFinalProperties(
+    objectType: ts.Type,
+    context: TypeCollectionContext
+  ): ObjectProperty[] {
+    const properties: ObjectProperty[] = [];
+
+    try {
+      const props = objectType.getProperties();
+
+      for (const prop of props) {
+        const propType = context.checker.getTypeOfSymbolAtLocation(
+          prop,
+          prop.valueDeclaration || prop.declarations?.[0]!
+        );
+        const propTypeString = context.checker.typeToString(propType);
+
+        const optional = !!(prop.flags & ts.SymbolFlags.Optional);
+        let readonly = false;
+
+        if (
+          prop.valueDeclaration &&
+          ts.isPropertySignature(prop.valueDeclaration)
+        ) {
+          readonly = !!prop.valueDeclaration.modifiers?.some(
+            (mod) => mod.kind === ts.SyntaxKind.ReadonlyKeyword
+          );
+        }
+
+        properties.push({
+          name: prop.name,
+          type: {
+            type: "primitive",
+            value: propTypeString,
+            metadata: { finalTypeString: propTypeString },
+          },
+          optional,
+          readonly,
+        });
+      }
+    } catch (error) {
+      console.log("Debug - Error collecting final properties:", error);
+    }
+
+    return properties;
+  }
+
+  // 기존 extractOriginalTypeInfo 메서드들 유지 (명목적 과정용)
   private extractOriginalTypeInfo(
     indexNode: ts.IndexedAccessTypeNode,
     context: TypeCollectionContext
   ): Array<{ typeName?: string; typeNode?: ts.TypeNode }> {
     try {
-      // Check if objectType is a type reference
       if (!ts.isTypeReferenceNode(indexNode.objectType)) {
         return [];
       }
 
       const objectTypeName = indexNode.objectType.typeName.getText();
 
-      // Check if indexType is a literal type
       if (!ts.isLiteralTypeNode(indexNode.indexType)) {
         return [];
       }
@@ -74,7 +272,6 @@ export class IndexAccessHandler implements TypeHandler {
         .getText()
         .replace(/['"]/g, "");
 
-      // Find original type declaration
       const typeDeclaration = this.findTypeDeclarationInProgram(
         objectTypeName,
         context
@@ -83,7 +280,6 @@ export class IndexAccessHandler implements TypeHandler {
         return [];
       }
 
-      // Extract original type info from property
       if (ts.isInterfaceDeclaration(typeDeclaration)) {
         return this.extractFromInterface(typeDeclaration, propertyName);
       } else if (
@@ -170,229 +366,6 @@ export class IndexAccessHandler implements TypeHandler {
           return statement;
         }
       }
-    }
-    return null;
-  }
-
-  // Create TypeStructure using original type information
-  private createTypeStructureWithOriginalInfo(
-    type: ts.Type,
-    originalInfo: { typeName?: string; typeNode?: ts.TypeNode },
-    context: TypeCollectionContext
-  ): TypeStructure {
-    // If original type name exists, treat as reference type
-    if (originalInfo.typeName) {
-      const typeName = originalInfo.typeName;
-
-      if (this.isBuiltinType(typeName)) {
-        return {
-          type: "reference",
-          name: typeName,
-          metadata: {
-            isBuiltin: true,
-            originalText: typeName,
-            originalTypeName: typeName,
-          },
-        };
-      }
-
-      // Check for circular reference
-      if (context.referencePath.includes(typeName)) {
-        return {
-          type: "reference",
-          name: `[${typeName}] (circular)`,
-          metadata: {
-            isBuiltin: false,
-            originalText: typeName,
-            referencePath: [...context.referencePath, typeName],
-            originalTypeName: typeName,
-          },
-        };
-      }
-
-      const structure: TypeStructure = {
-        type: "reference",
-        name: `[${typeName}]`,
-        metadata: {
-          isBuiltin: false,
-          originalText: typeName,
-          referencePath: [...context.referencePath, typeName],
-          originalTypeName: typeName,
-        },
-      };
-
-      // Expand reference if within depth limit
-      if (this.shouldExpandReference(context)) {
-        const expanded = this.expandTypeByName(typeName, context);
-        if (expanded) {
-          structure.children = [expanded];
-        }
-      }
-
-      return structure;
-    }
-
-    // If no original type name, use existing method
-    return this.createTypeStructureFromType(type, context);
-  }
-
-  private createTypeStructureFromType(
-    type: ts.Type,
-    context: TypeCollectionContext
-  ): TypeStructure {
-    const typeString = context.checker.typeToString(type);
-
-    // If type has symbol (user-defined type)
-    if (
-      type.symbol &&
-      type.symbol.declarations &&
-      type.symbol.declarations.length > 0
-    ) {
-      const declaration = type.symbol.declarations[0];
-      let name: string;
-
-      if (ts.isTypeAliasDeclaration(declaration) && declaration.name) {
-        name = declaration.name.text;
-      } else if (ts.isInterfaceDeclaration(declaration) && declaration.name) {
-        name = declaration.name.text;
-      } else if (ts.isClassDeclaration(declaration) && declaration.name) {
-        name = declaration.name.text;
-      } else {
-        return {
-          type: "primitive",
-          value: typeString,
-          metadata: { originalText: typeString },
-        };
-      }
-
-      if (this.isBuiltinType(name)) {
-        return {
-          type: "reference",
-          name,
-          metadata: { isBuiltin: true, originalText: name },
-        };
-      }
-
-      // Check for circular reference
-      if (context.referencePath.includes(name)) {
-        return {
-          type: "reference",
-          name: `[${name}] (circular)`,
-          metadata: {
-            isBuiltin: false,
-            originalText: name,
-            referencePath: [...context.referencePath, name],
-          },
-        };
-      }
-
-      const structure: TypeStructure = {
-        type: "reference",
-        name: `[${name}]`,
-        metadata: {
-          isBuiltin: false,
-          originalText: name,
-          referencePath: [...context.referencePath, name],
-        },
-      };
-
-      // Expand if within depth limit
-      if (this.shouldExpandReference(context)) {
-        const expanded = this.expandTypeDeclaration(declaration, name, context);
-        if (expanded) {
-          structure.children = [expanded];
-        }
-      }
-
-      return structure;
-    } else {
-      // If no symbol: determine if user-defined type by type string
-      const primitiveTypes = [
-        "string",
-        "number",
-        "boolean",
-        "symbol",
-        "bigint",
-        "unknown",
-        "any",
-        "never",
-        "void",
-        "null",
-        "undefined",
-      ];
-
-      if (primitiveTypes.includes(typeString)) {
-        return {
-          type: "primitive",
-          value: typeString,
-          metadata: { originalText: typeString },
-        };
-      }
-
-      // Check builtin types
-      if (this.isBuiltinType(typeString)) {
-        return {
-          type: "reference",
-          name: typeString,
-          metadata: { isBuiltin: true, originalText: typeString },
-        };
-      }
-
-      // Otherwise treat as user-defined type
-      if (context.referencePath.includes(typeString)) {
-        return {
-          type: "reference",
-          name: `[${typeString}] (circular)`,
-          metadata: {
-            isBuiltin: false,
-            originalText: typeString,
-            referencePath: [...context.referencePath, typeString],
-          },
-        };
-      }
-
-      const structure: TypeStructure = {
-        type: "reference",
-        name: `[${typeString}]`,
-        metadata: {
-          isBuiltin: false,
-          originalText: typeString,
-          referencePath: [...context.referencePath, typeString],
-        },
-      };
-
-      // Try to find and expand type by name
-      if (this.shouldExpandReference(context)) {
-        const expanded = this.expandTypeByName(typeString, context);
-        if (expanded) {
-          structure.children = [expanded];
-        }
-      }
-
-      return structure;
-    }
-  }
-
-  // Helper method to find and expand type by name
-  private expandTypeByName(
-    typeName: string,
-    context: TypeCollectionContext
-  ): TypeStructure | null {
-    try {
-      const sourceFiles = context.program.getSourceFiles();
-      for (const sourceFile of sourceFiles) {
-        for (const statement of sourceFile.statements) {
-          if (
-            (ts.isTypeAliasDeclaration(statement) ||
-              ts.isInterfaceDeclaration(statement)) &&
-            statement.name?.text === typeName
-          ) {
-            return this.expandTypeDeclaration(statement, typeName, context);
-          }
-        }
-      }
-    } catch (error) {
-      // Return null if search fails
     }
     return null;
   }

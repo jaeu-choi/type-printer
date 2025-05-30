@@ -1,5 +1,10 @@
 import * as ts from "typescript";
-import { TypeHandler, TypeStructure, TypeCollectionContext, ObjectProperty } from "../types";
+import {
+  TypeHandler,
+  TypeStructure,
+  TypeCollectionContext,
+  ObjectProperty,
+} from "../types";
 import { TypeStructureCollector } from "./index";
 
 export class ReferenceTypeHandler implements TypeHandler {
@@ -12,12 +17,24 @@ export class ReferenceTypeHandler implements TypeHandler {
     const symbol = context.checker.getSymbolAtLocation(refNode.typeName);
     const name = symbol ? symbol.getName() : refNode.typeName.getText();
 
+    // 최종 계산된 타입 가져오기 (제네릭 인스턴스화 포함)
+    const finalType = context.checker.getTypeFromTypeNode(refNode);
+    const finalTypeString = context.checker.typeToString(finalType);
+
     const typeArgs =
       refNode.typeArguments?.map((arg) =>
         context.checker.typeToString(context.checker.getTypeFromTypeNode(arg))
       ) || [];
 
     if (this.isBuiltinType(name)) {
+      // 내장 타입의 경우 최종 결과 계산
+      const computedResult = this.computeBuiltinTypeResult(
+        finalType,
+        name,
+        typeArgs,
+        context
+      );
+
       const structure: TypeStructure = {
         type: "reference",
         name,
@@ -25,12 +42,18 @@ export class ReferenceTypeHandler implements TypeHandler {
           typeArgs,
           originalText: refNode.getText(),
           isBuiltin: true,
+          finalTypeString,
         },
       };
+
+      if (!context.expanded) {
+        structure.computedResult = computedResult;
+      }
+
       return structure;
     }
 
-    // Check for circular reference
+    // 순환 참조 체크
     if (context.referencePath.includes(name)) {
       return {
         type: "reference",
@@ -40,10 +63,12 @@ export class ReferenceTypeHandler implements TypeHandler {
           originalText: refNode.getText(),
           isBuiltin: false,
           referencePath: [...context.referencePath, name],
+          finalTypeString,
         },
       };
     }
 
+    // 사용자 정의 타입의 경우
     const structure: TypeStructure = {
       type: "reference",
       name: `[${name}]`,
@@ -52,18 +77,268 @@ export class ReferenceTypeHandler implements TypeHandler {
         originalText: refNode.getText(),
         isBuiltin: false,
         referencePath: [...context.referencePath, name],
+        finalTypeString,
       },
     };
 
-    // Recursively expand (check depth limit)
-    if (this.shouldExpandReference(context)) {
-      const expanded = this.expandReference(symbol, name, context);
-      if (expanded) {
-        structure.children = [expanded];
+    // 명목적 과정과 최종 결과 계산
+    const nominalExpansion = this.expandReference(symbol, name, context);
+    const computedResult = this.computeFinalReferenceResult(
+      finalType,
+      name,
+      context
+    );
+
+    if (context.expanded) {
+      // expanded 모드: 명목적 확장 + 최종 결과
+      if (nominalExpansion) {
+        structure.children = [nominalExpansion];
       }
+      structure.computedResult = computedResult;
+    } else {
+      // 기본 모드: 최종 결과만
+      structure.computedResult = computedResult;
     }
 
     return structure;
+  }
+
+  private computeBuiltinTypeResult(
+    finalType: ts.Type,
+    typeName: string,
+    typeArgs: string[],
+    context: TypeCollectionContext
+  ): TypeStructure {
+    const finalTypeString = context.checker.typeToString(finalType);
+
+    // 제네릭 내장 타입들의 최종 형태 계산
+    switch (typeName) {
+      case "Array":
+        if (typeArgs.length > 0) {
+          return {
+            type: "array",
+            children: [
+              {
+                type: "primitive",
+                value: typeArgs[0],
+                metadata: { finalTypeString: typeArgs[0] },
+              },
+            ],
+            metadata: { finalTypeString },
+          };
+        }
+        break;
+
+      case "Promise":
+        if (typeArgs.length > 0) {
+          return {
+            type: "reference",
+            name: "Promise",
+            children: [
+              {
+                type: "primitive",
+                value: typeArgs[0],
+                metadata: { finalTypeString: typeArgs[0] },
+              },
+            ],
+            metadata: { finalTypeString, isBuiltin: true },
+          };
+        }
+        break;
+
+      case "Record":
+        if (typeArgs.length >= 2) {
+          return {
+            type: "object",
+            metadata: {
+              finalTypeString,
+              recordKeyType: typeArgs[0],
+              recordValueType: typeArgs[1],
+            },
+          };
+        }
+        break;
+
+      case "Pick":
+      case "Omit":
+      case "Partial":
+      case "Required":
+      case "Readonly":
+        // 이런 유틸리티 타입들은 실제 계산된 객체 구조 반환
+        if (finalType.getProperties && finalType.getProperties().length > 0) {
+          return this.createFinalObjectStructure(finalType, context);
+        }
+        break;
+    }
+
+    // 기본: 타입 이름과 인자들
+    return {
+      type: "reference",
+      name: typeName,
+      metadata: {
+        typeArgs,
+        finalTypeString,
+        isBuiltin: true,
+      },
+    };
+  }
+
+  private computeFinalReferenceResult(
+    finalType: ts.Type,
+    typeName: string,
+    context: TypeCollectionContext
+  ): TypeStructure {
+    const finalTypeString = context.checker.typeToString(finalType);
+
+    // 객체 타입인 경우 실제 프로퍼티 구조 반환
+    if (finalType.getProperties && finalType.getProperties().length > 0) {
+      return this.createFinalObjectStructure(finalType, context);
+    }
+
+    // Union 타입인 경우
+    if (finalType.isUnion()) {
+      const unionMembers = finalType.types.map((memberType) => {
+        const memberString = context.checker.typeToString(memberType);
+
+        if (memberType.getProperties && memberType.getProperties().length > 0) {
+          return this.createFinalObjectStructure(memberType, context);
+        } else {
+          return {
+            type: "primitive" as const,
+            value: memberString,
+            metadata: { finalTypeString: memberString },
+          };
+        }
+      });
+
+      return {
+        type: "union",
+        children: unionMembers,
+        metadata: { finalTypeString },
+      };
+    }
+
+    // 원시 타입이나 단순 참조인 경우
+    return {
+      type: "reference",
+      name: `[${typeName}]`,
+      metadata: {
+        finalTypeString,
+        originalTypeName: typeName,
+      },
+    };
+  }
+
+  private createFinalObjectStructure(
+    objectType: ts.Type,
+    context: TypeCollectionContext
+  ): TypeStructure {
+    const properties: ObjectProperty[] = [];
+
+    try {
+      const props = objectType.getProperties();
+
+      for (const prop of props) {
+        const propType = context.checker.getTypeOfSymbolAtLocation(
+          prop,
+          prop.valueDeclaration || prop.declarations?.[0]!
+        );
+        const propTypeString = context.checker.typeToString(propType);
+
+        const optional = !!(prop.flags & ts.SymbolFlags.Optional);
+        let readonly = false;
+
+        if (
+          prop.valueDeclaration &&
+          ts.isPropertySignature(prop.valueDeclaration)
+        ) {
+          readonly = !!prop.valueDeclaration.modifiers?.some(
+            (mod) => mod.kind === ts.SyntaxKind.ReadonlyKeyword
+          );
+        }
+
+        // 복잡한 프로퍼티 타입의 경우 재귀적 처리
+        const finalPropType = this.createFinalPropertyType(propType, context);
+
+        properties.push({
+          name: prop.name,
+          type: finalPropType,
+          optional,
+          readonly,
+        });
+      }
+    } catch (error) {
+      console.log("Debug - Error collecting reference properties:", error);
+    }
+
+    return {
+      type: "object",
+      properties,
+      metadata: {
+        finalTypeString: context.checker.typeToString(objectType),
+      },
+    };
+  }
+
+  private createFinalPropertyType(
+    propType: ts.Type,
+    context: TypeCollectionContext
+  ): TypeStructure {
+    const propTypeString = context.checker.typeToString(propType);
+
+    // Union 타입인 경우
+    if (propType.isUnion()) {
+      const unionMembers = propType.types.map((memberType) => {
+        const memberString = context.checker.typeToString(memberType);
+
+        if (memberType.getProperties && memberType.getProperties().length > 0) {
+          return this.createFinalObjectStructure(memberType, context);
+        } else {
+          return {
+            type: "primitive" as const,
+            value: memberString,
+            metadata: { finalTypeString: memberString },
+          };
+        }
+      });
+
+      return {
+        type: "union",
+        children: unionMembers,
+        metadata: { finalTypeString: propTypeString },
+      };
+    }
+
+    // 객체 타입인 경우
+    if (propType.getProperties && propType.getProperties().length > 0) {
+      return this.createFinalObjectStructure(propType, context);
+    }
+
+    // 배열 타입인 경우
+    const typeArgs = context.checker.getTypeArguments(
+      propType as ts.TypeReference
+    );
+    if (typeArgs && typeArgs.length > 0 && propTypeString.endsWith("[]")) {
+      const elementType = context.checker.typeToString(typeArgs[0]);
+      return {
+        type: "array",
+        children: [
+          {
+            type: "primitive",
+            value: elementType,
+            metadata: { finalTypeString: elementType },
+          },
+        ],
+        metadata: { finalTypeString: propTypeString },
+      };
+    }
+
+    // 기본: primitive 타입
+    return {
+      type: "primitive",
+      value: propTypeString,
+      metadata: { finalTypeString: propTypeString },
+    };
   }
 
   private isBuiltinType(name: string): boolean {
