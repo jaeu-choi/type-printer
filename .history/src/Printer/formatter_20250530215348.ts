@@ -32,21 +32,15 @@ export class TypeFormatter {
   private formatResultView(structure: TypeStructure, typeName: string): string {
     // 최종 계산 결과만 표시
     if (structure.computedResult) {
-      console.log("✓ computedResult 사용");
       return this.formatStructure(structure.computedResult, false, 0);
     }
 
     // computedResult가 없으면 finalTypeString 사용
     if (structure.metadata?.finalTypeString) {
-      console.log(
-        "✓ finalTypeString 사용:",
-        structure.metadata.finalTypeString
-      );
       return this.formatFinalTypeString(structure.metadata.finalTypeString);
     }
 
     // 둘 다 없으면 기본 구조 표시
-    console.log("✓ 기본 구조 사용");
     return this.formatStructure(structure, false, 0);
   }
 

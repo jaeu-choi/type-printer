@@ -169,6 +169,7 @@ export class IndexAccessHandler implements TypeHandler {
 
         return memberResult;
       });
+
       // FIXED: Union 결과에 올바른 finalTypeString 설정
       const memberStrings = finalMembers.map((member) => {
         if (member.value) return member.value;

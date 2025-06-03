@@ -45,7 +45,6 @@ export interface TypeStructure {
     originalTypeName?: string;
     finalTypeString?: string; // TypeChecker로 계산된 최종 타입 문자열
     [key: string]: any;
-    skipRecomputation?: boolean;
   };
 }
 

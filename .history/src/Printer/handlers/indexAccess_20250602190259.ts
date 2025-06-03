@@ -15,9 +15,19 @@ export class IndexAccessHandler implements TypeHandler {
   handle(node: ts.TypeNode, context: TypeCollectionContext): TypeStructure {
     const indexNode = node as ts.IndexedAccessTypeNode;
 
+    console.log("=== IndexAccessHandler.handle 시작 ===");
+    console.log("indexNode.getText():", indexNode.getText());
+    console.log("objectType:", indexNode.objectType.getText());
+    console.log("indexType:", indexNode.indexType.getText());
+
     // 최종 계산된 타입 가져오기 (TypeScript 컴파일러가 계산한 결과)
     const finalType = context.checker.getTypeFromTypeNode(indexNode);
     const finalTypeString = context.checker.typeToString(finalType);
+
+    console.log("=== TypeChecker 결과 ===");
+    console.log("finalTypeString:", finalTypeString);
+    console.log("finalType.flags:", finalType.flags);
+    console.log("finalType.isUnion():", finalType.isUnion());
     if (finalType.isUnion()) {
       console.log("Union types count:", finalType.types.length);
       finalType.types.forEach((t, i) => {
@@ -40,25 +50,19 @@ export class IndexAccessHandler implements TypeHandler {
       indexNode
     );
 
-    // FIXED: finalTypeString이 타입 이름이 아닌 실제 해석된 타입 문자열이 되도록 수정
-    let actualFinalTypeString = finalTypeString;
-    if (computedResult.type === "union" && computedResult.children) {
-      // Union 타입인 경우 실제 멤버들로 문자열 구성
-      const memberStrings = computedResult.children.map((child) => {
-        if (child.value) return child.value;
-        if (child.metadata?.finalTypeString)
-          return child.metadata.finalTypeString;
-        return "unknown";
-      });
-      actualFinalTypeString = memberStrings.join(" | ");
-      console.log("✓ Union finalTypeString 재구성:", actualFinalTypeString);
-    }
+    console.log("=== computedResult 생성 완료 ===");
+    console.log("computedResult.type:", computedResult.type);
+    console.log("computedResult.value:", computedResult.value);
+    console.log(
+      "computedResult.children?.length:",
+      computedResult.children?.length
+    );
 
     const structure: TypeStructure = {
       type: "access",
       metadata: {
         originalText: indexNode.getText(),
-        finalTypeString: actualFinalTypeString, // FIXED: 실제 해석된 타입 사용
+        finalTypeString,
       },
     };
 
@@ -71,6 +75,7 @@ export class IndexAccessHandler implements TypeHandler {
       structure.computedResult = computedResult;
     }
 
+    console.log("=== IndexAccessHandler.handle 완료 ===");
     return structure;
   }
 
@@ -78,6 +83,7 @@ export class IndexAccessHandler implements TypeHandler {
     indexNode: ts.IndexedAccessTypeNode,
     context: TypeCollectionContext
   ): TypeStructure[] {
+    console.log("=== extractNominalProcess 시작 ===");
     const process: TypeStructure[] = [];
 
     // 1. 객체 타입 참조 정보
@@ -106,6 +112,7 @@ export class IndexAccessHandler implements TypeHandler {
 
     // 3. 원본 타입 정보 (AST에서 추출한 참조 추적)
     const originalTypeInfo = this.extractOriginalTypeInfo(indexNode, context);
+    console.log("originalTypeInfo.length:", originalTypeInfo.length);
 
     if (originalTypeInfo.length > 0) {
       const referenceTrace = originalTypeInfo.map((info, index) => ({
@@ -127,6 +134,11 @@ export class IndexAccessHandler implements TypeHandler {
       });
     }
 
+    console.log(
+      "=== extractNominalProcess 완료, process.length:",
+      process.length,
+      "==="
+    );
     return process;
   }
 
@@ -136,6 +148,11 @@ export class IndexAccessHandler implements TypeHandler {
     indexNode: ts.IndexedAccessTypeNode
   ): TypeStructure {
     const finalTypeString = context.checker.typeToString(finalType);
+
+    console.log("=== computeFinalIndexAccessResult 시작 ===");
+    console.log("finalTypeString:", finalTypeString);
+    console.log("finalType.flags:", finalType.flags);
+    console.log("finalType.isUnion():", finalType.isUnion());
 
     // ✨ CRITICAL FIX: 원시 타입 먼저 체크!
     if (this.isPrimitiveType(finalType)) {
@@ -159,44 +176,54 @@ export class IndexAccessHandler implements TypeHandler {
 
     // Union 타입인 경우 (예: User["age"] = number | Client)
     if (finalType.isUnion()) {
+      console.log("✓ Union 타입으로 처리");
+      console.log("Union members count:", finalType.types.length);
+
       const finalMembers = finalType.types.map((memberType, index) => {
+        console.log(`=== Union Member ${index} 처리 시작 ===`);
         const memberString = context.checker.typeToString(memberType);
+        console.log(`Member ${index} typeString:`, memberString);
+        console.log(`Member ${index} flags:`, memberType.flags);
 
         const memberResult = this.createFinalMemberStructure(
           memberType,
           context
         );
 
+        console.log(`Member ${index} result type:`, memberResult.type);
+        console.log(`Member ${index} result value:`, memberResult.value);
+        console.log(`=== Union Member ${index} 처리 완료 ===`);
+
         return memberResult;
       });
-      // FIXED: Union 결과에 올바른 finalTypeString 설정
-      const memberStrings = finalMembers.map((member) => {
-        if (member.value) return member.value;
-        if (member.metadata?.finalTypeString)
-          return member.metadata.finalTypeString;
-        return "unknown";
-      });
-      const unionTypeString = memberStrings.join(" | ");
+
+      console.log(
+        "✓ Union 처리 완료, finalMembers.length:",
+        finalMembers.length
+      );
 
       const unionResult = {
         type: "union" as const,
         children: finalMembers,
         metadata: {
-          finalTypeString: unionTypeString, // FIXED: 실제 union 문자열 사용
+          finalTypeString,
           originalText: indexNode.getText(),
         },
       };
 
+      console.log("=== Union 결과 생성 완료 ===");
       return unionResult;
     }
 
     // 배열 타입인 경우
     if (this.isArrayType(finalType, finalTypeString)) {
+      console.log("✓ Array 타입으로 처리");
       return this.createArrayStructure(finalType, finalTypeString, context);
     }
 
     // 실제 사용자 정의 객체 타입인 경우에만 프로퍼티 수집
     if (this.isUserDefinedObjectType(finalType, context)) {
+      console.log("✓ 사용자 정의 객체 타입으로 처리");
       const properties = this.collectFinalProperties(finalType, context);
       return {
         type: "object",
@@ -207,6 +234,7 @@ export class IndexAccessHandler implements TypeHandler {
 
     // 참조 타입인 경우
     if (this.isReferenceType(finalType)) {
+      console.log("✓ Reference 타입으로 처리");
       return this.createReferenceStructure(finalType, finalTypeString, context);
     }
 
@@ -225,8 +253,13 @@ export class IndexAccessHandler implements TypeHandler {
   ): TypeStructure {
     const memberTypeString = context.checker.typeToString(memberType);
 
+    console.log("--- createFinalMemberStructure ---");
+    console.log("memberTypeString:", memberTypeString);
+    console.log("memberType.flags:", memberType.flags);
+
     // 원시 타입 먼저 체크!
     if (this.isPrimitiveType(memberType)) {
+      console.log("→ 원시 타입으로 처리");
       return {
         type: "primitive",
         value: memberTypeString,
@@ -236,6 +269,7 @@ export class IndexAccessHandler implements TypeHandler {
 
     // 리터럴 타입 체크
     if (this.isLiteralType(memberType)) {
+      console.log("→ 리터럴 타입으로 처리");
       return {
         type: "literal",
         value: memberTypeString,
@@ -245,6 +279,7 @@ export class IndexAccessHandler implements TypeHandler {
 
     // Union 타입인 경우 (중첩 Union)
     if (memberType.isUnion()) {
+      console.log("→ 중첩 Union 타입으로 처리");
       const nestedMembers = memberType.types.map((nestedType, i) => {
         console.log(
           `  Nested Union[${i}]:`,
@@ -253,24 +288,16 @@ export class IndexAccessHandler implements TypeHandler {
         return this.createFinalMemberStructure(nestedType, context);
       });
 
-      // FIXED: 중첩 Union도 올바른 finalTypeString 생성
-      const nestedMemberStrings = nestedMembers.map((member) => {
-        if (member.value) return member.value;
-        if (member.metadata?.finalTypeString)
-          return member.metadata.finalTypeString;
-        return "unknown";
-      });
-      const nestedUnionString = nestedMemberStrings.join(" | ");
-
       return {
         type: "union",
         children: nestedMembers,
-        metadata: { finalTypeString: nestedUnionString }, // FIXED
+        metadata: { finalTypeString: memberTypeString },
       };
     }
 
     // 객체 타입인 경우 (사용자 정의만)
     if (this.isUserDefinedObjectType(memberType, context)) {
+      console.log("→ 사용자 정의 객체 타입으로 처리");
       const properties = this.collectFinalProperties(memberType, context);
       return {
         type: "object",
@@ -281,6 +308,7 @@ export class IndexAccessHandler implements TypeHandler {
 
     // 사용자 정의 타입 참조인 경우 (심볼이 있는 경우)
     if (this.isReferenceType(memberType)) {
+      console.log("→ 참조 타입으로 처리");
       return this.createReferenceStructure(
         memberType,
         memberTypeString,
@@ -313,6 +341,7 @@ export class IndexAccessHandler implements TypeHandler {
         ts.TypeFlags.Null |
         ts.TypeFlags.Undefined)
     );
+    console.log(`isPrimitiveType: ${result} (flags: ${type.flags})`);
     return result;
   }
 
@@ -326,6 +355,7 @@ export class IndexAccessHandler implements TypeHandler {
         ts.TypeFlags.TemplateLiteral |
         ts.TypeFlags.EnumLiteral)
     );
+    console.log(`isLiteralType: ${result} (flags: ${type.flags})`);
     return result;
   }
 
@@ -334,6 +364,7 @@ export class IndexAccessHandler implements TypeHandler {
       typeString.endsWith("[]") ||
       (type.symbol && type.symbol.name === "Array") ||
       typeString.startsWith("Array<");
+    console.log(`isArrayType: ${result} (typeString: ${typeString})`);
     return result;
   }
 
@@ -343,31 +374,37 @@ export class IndexAccessHandler implements TypeHandler {
   ): boolean {
     // 원시 타입이나 리터럴 타입이면 제외
     if (this.isPrimitiveType(type) || this.isLiteralType(type)) {
+      console.log("isUserDefinedObjectType: false (primitive/literal)");
       return false;
     }
 
     // 배열 타입이면 제외
     const typeString = context.checker.typeToString(type);
     if (this.isArrayType(type, typeString)) {
+      console.log("isUserDefinedObjectType: false (array)");
       return false;
     }
 
     // 프로퍼티가 있는지 확인
     const properties = type.getProperties();
     if (!properties || properties.length === 0) {
+      console.log("isUserDefinedObjectType: false (no properties)");
       return false;
     }
 
     // ✨ CRITICAL: 빌트인 타입의 프로토타입 메서드들 제외
     if (this.hasOnlyBuiltinMethods(properties)) {
+      console.log("isUserDefinedObjectType: false (builtin methods only)");
       return false;
     }
 
     // 프로퍼티가 너무 많으면 제외 (복잡한 빌트인 타입일 가능성)
     if (properties.length > 50) {
+      console.log("isUserDefinedObjectType: false (too many properties)");
       return false;
     }
 
+    console.log("isUserDefinedObjectType: true");
     return true;
   }
 
@@ -393,6 +430,11 @@ export class IndexAccessHandler implements TypeHandler {
     ]);
 
     const result = properties.every((prop) => builtinMethods.has(prop.name));
+    console.log(
+      `hasOnlyBuiltinMethods: ${result} (properties: ${properties
+        .map((p) => p.name)
+        .join(", ")})`
+    );
     return result;
   }
 
@@ -404,6 +446,7 @@ export class IndexAccessHandler implements TypeHandler {
       type.symbol.flags &
         (ts.SymbolFlags.Type | ts.SymbolFlags.Interface | ts.SymbolFlags.Class)
     );
+    console.log(`isReferenceType: ${result}`);
     return result;
   }
 
@@ -412,6 +455,7 @@ export class IndexAccessHandler implements TypeHandler {
     typeString: string,
     context: TypeCollectionContext
   ): TypeStructure {
+    console.log("--- createArrayStructure ---");
     const typeArgs = context.checker.getTypeArguments(type as ts.TypeReference);
 
     if (typeArgs && typeArgs.length > 0) {
@@ -439,6 +483,7 @@ export class IndexAccessHandler implements TypeHandler {
     typeString: string,
     context: TypeCollectionContext
   ): TypeStructure {
+    console.log("--- createReferenceStructure ---");
     const declaration = type.symbol?.declarations?.[0];
     let typeName = "Unknown";
 
@@ -452,8 +497,11 @@ export class IndexAccessHandler implements TypeHandler {
       }
     }
 
+    console.log("typeName:", typeName);
+
     // 내장 타입 체크
     if (this.isBuiltinType(typeName)) {
+      console.log("→ 빌트인 타입으로 처리");
       return {
         type: "reference",
         name: typeName,
@@ -466,6 +514,7 @@ export class IndexAccessHandler implements TypeHandler {
 
     // 참조 타입이 실제로 사용자 정의 객체 구조를 가지는지 확인
     if (this.isUserDefinedObjectType(type, context)) {
+      console.log("→ 사용자 정의 객체로 확장");
       return {
         type: "object",
         properties: this.collectFinalProperties(type, context),
@@ -503,10 +552,12 @@ export class IndexAccessHandler implements TypeHandler {
     objectType: ts.Type,
     context: TypeCollectionContext
   ): ObjectProperty[] {
+    console.log("--- collectFinalProperties ---");
     const properties: ObjectProperty[] = [];
 
     try {
       const props = objectType.getProperties();
+      console.log("Properties count:", props.length);
 
       for (const prop of props) {
         const propType = context.checker.getTypeOfSymbolAtLocation(
@@ -527,6 +578,8 @@ export class IndexAccessHandler implements TypeHandler {
           );
         }
 
+        console.log(`Property: ${prop.name} → ${propTypeString}`);
+
         properties.push({
           name: prop.name,
           type: {
@@ -538,7 +591,11 @@ export class IndexAccessHandler implements TypeHandler {
           readonly,
         });
       }
-    } catch (error) {}
+    } catch (error) {
+      console.log("Debug - Error collecting final properties:", error);
+    }
+
+    console.log("Final properties count:", properties.length);
     return properties;
   }
 
@@ -555,17 +612,21 @@ export class IndexAccessHandler implements TypeHandler {
       }
 
       const objectTypeName = indexNode.objectType.typeName.getText();
+      console.log("objectTypeName:", objectTypeName);
 
       const typeDeclaration = this.findTypeDeclarationInProgram(
         objectTypeName,
         context
       );
       if (!typeDeclaration) {
+        console.log("typeDeclaration을 찾을 수 없음");
         return [];
       }
 
       // ✨ NEW: Union 인덱스 타입 처리
       if (ts.isUnionTypeNode(indexNode.indexType)) {
+        console.log("✓ Union 인덱스 감지:", indexNode.indexType.getText());
+
         const allResults: Array<{ typeName?: string; typeNode?: ts.TypeNode }> =
           [];
 
@@ -597,21 +658,25 @@ export class IndexAccessHandler implements TypeHandler {
               );
             }
 
+            console.log(`    → ${memberResults.length}개 결과 추출`);
             allResults.push(...memberResults);
           }
         }
 
+        console.log(`✓ Union 인덱스 총 ${allResults.length}개 결과 반환`);
         return allResults;
       }
 
       // 기존 단일 리터럴 처리
       if (!ts.isLiteralTypeNode(indexNode.indexType)) {
+        console.log("indexType이 LiteralTypeNode가 아님");
         return [];
       }
 
       const propertyName = indexNode.indexType.literal
         .getText()
         .replace(/['"]/g, "");
+      console.log("propertyName:", propertyName);
 
       if (ts.isInterfaceDeclaration(typeDeclaration)) {
         return this.extractFromInterface(typeDeclaration, propertyName);
@@ -624,6 +689,7 @@ export class IndexAccessHandler implements TypeHandler {
 
       return [];
     } catch (error) {
+      console.log("Debug - Error extracting original type info:", error);
       return [];
     }
   }
@@ -642,6 +708,7 @@ export class IndexAccessHandler implements TypeHandler {
         }
       }
     }
+    console.log(`찾지 못함: ${propertyName}`);
     return [];
   }
 
@@ -659,6 +726,7 @@ export class IndexAccessHandler implements TypeHandler {
         }
       }
     }
+    console.log(`찾지 못함: ${propertyName}`);
     return [];
   }
 
@@ -679,6 +747,7 @@ export class IndexAccessHandler implements TypeHandler {
         return { typeNode: unionMember };
       });
     } else if (ts.isTypeReferenceNode(typeNode)) {
+      console.log("Reference 타입 노드 처리");
       return [
         {
           typeName: typeNode.typeName.getText(),

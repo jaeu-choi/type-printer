@@ -46,7 +46,7 @@ export class OperatorTypeHandler implements TypeHandler {
       });
 
       if (keyNames.length > 1) {
-        // 여러 키가 있는 경우 Union으로 직접 반환
+        // 여러 키가 있는 경우 Union으로 처리
         const literalTypes = keyNames.map((keyName) => ({
           type: "literal" as const,
           value: `"${keyName}"`,
@@ -56,7 +56,6 @@ export class OperatorTypeHandler implements TypeHandler {
           },
         }));
 
-        // ✨ UPDATED: Union을 직접 반환하되 skipRecomputation으로 보호
         return {
           type: "union" as const,
           children: literalTypes,
@@ -64,7 +63,6 @@ export class OperatorTypeHandler implements TypeHandler {
             originalText: operatorNode.getText(),
             finalTypeString: keyNames.map((k) => `"${k}"`).join(" | "),
             extractedFromProperties: true,
-            skipRecomputation: true, // 재계산 방지
           },
         };
       } else if (keyNames.length === 1) {
@@ -77,7 +75,6 @@ export class OperatorTypeHandler implements TypeHandler {
             originalText: `"${keyName}"`,
             finalTypeString: `"${keyName}"`,
             extractedFromProperties: true,
-            skipRecomputation: true, // 재계산 방지
           },
         };
       }
@@ -123,7 +120,6 @@ export class OperatorTypeHandler implements TypeHandler {
         }
       });
 
-      // ✨ UPDATED: Union을 직접 반환하되 skipRecomputation으로 보호
       return {
         type: "union" as const,
         children: literalTypes,
@@ -131,34 +127,6 @@ export class OperatorTypeHandler implements TypeHandler {
           originalText: operatorNode.getText(),
           finalTypeString: originalTypeString,
           fallbackUnion: true,
-          skipRecomputation: true, // 재계산 방지
-        },
-      };
-    }
-
-    // finalTypeString이 Union 패턴인지 체크 (fallback)
-    if (originalTypeString.includes(" | ")) {
-      console.log("✓ 문자열 패턴으로 Union 감지:", originalTypeString);
-
-      // 문자열을 파싱해서 Union 멤버들 추출
-      const unionParts = originalTypeString
-        .split(" | ")
-        .map((part) => part.trim());
-      const literalTypes = unionParts.map((part) => ({
-        type: "literal" as const,
-        value: part,
-        metadata: { originalText: part, finalTypeString: part },
-      }));
-
-      // ✨ UPDATED: Union을 직접 반환하되 skipRecomputation으로 보호
-      return {
-        type: "union" as const,
-        children: literalTypes,
-        metadata: {
-          originalText: operatorNode.getText(),
-          finalTypeString: originalTypeString,
-          parsedFromString: true,
-          skipRecomputation: true, // 재계산 방지
         },
       };
     }
@@ -171,7 +139,6 @@ export class OperatorTypeHandler implements TypeHandler {
         originalText: operatorNode.getText(),
         finalTypeString: originalTypeString,
         fallback: true,
-        skipRecomputation: true, // 재계산 방지
       },
     };
   }

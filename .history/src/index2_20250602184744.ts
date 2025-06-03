@@ -211,28 +211,13 @@ type some = {
   name: string;
   age: number;
   address: { city: string; zipNum: number };
-  email: "age" | "number";
 };
 
-type someValue = some["email" | "age" | "address"];
-// printer.printType("someValue");
+type someValue = some["address"];
+printer.printType("someValue");
 // |---{
 //   |---age: number;
 //   |---email: {
 //              |---name: number;
 //              };
 // |---}
-
-type Response = {
-  data: {
-    user: {
-      name: string;
-      roles: ("admin" | "user")[];
-    };
-  };
-  status: number;
-};
-
-type RolesArray = Response["data"]["user"]["roles"];
-
-printer.printType("RolesArray");

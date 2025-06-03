@@ -251,14 +251,17 @@ export class TypeAliasPrinter {
 
     const structure = this.collector.collect(aliasDecl.type, context);
 
-    // ✨ 명시적이고 확장 가능한 체크
-    if (!structure.metadata?.skipRecomputation) {
-      // 최종 타입 정보 추가
-      if (structure.metadata) {
-        structure.metadata.finalTypeString = finalTypeString;
-      } else {
-        structure.metadata = { finalTypeString };
-      }
+    // ✨ DEBUG: OperatorHandler가 반환한 구조 확인
+    console.log("=== printer.ts collectTypeAliasInfo DEBUG ===");
+    console.log(
+      "OperatorHandler 반환 구조:",
+      JSON.stringify(structure, null, 2)
+    );
+    // 최종 타입 정보 추가
+    if (structure.metadata) {
+      structure.metadata.finalTypeString = finalTypeString;
+    } else {
+      structure.metadata = { finalTypeString };
     }
 
     return {

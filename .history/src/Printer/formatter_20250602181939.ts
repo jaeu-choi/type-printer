@@ -30,7 +30,25 @@ export class TypeFormatter {
   }
 
   private formatResultView(structure: TypeStructure, typeName: string): string {
+    console.log("=== formatter.ts formatResultView DEBUG ===");
+    console.log("받은 structure:", JSON.stringify(structure, null, 2));
+    console.log("structure.type:", structure.type);
+    console.log("structure.computedResult:", structure.computedResult);
+    console.log(
+      "structure.metadata?.finalTypeString:",
+      structure.metadata?.finalTypeString
+    );
+
     // 최종 계산 결과만 표시
+    if (
+      (structure.type === "union" || structure.type === "intersection") &&
+      structure.children &&
+      structure.children.length > 0
+    ) {
+      console.log("✓ Union/Intersection children 직접 사용");
+      console.log("children count:", structure.children.length);
+      return this.formatStructure(structure, false, 0);
+    }
     if (structure.computedResult) {
       console.log("✓ computedResult 사용");
       return this.formatStructure(structure.computedResult, false, 0);

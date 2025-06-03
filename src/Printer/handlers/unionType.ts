@@ -60,16 +60,12 @@ export class UnionTypeHandler implements TypeHandler {
       const finalMembers = unionType.types.map((memberType, index) => {
         return this.analyzeAndProcessMember(memberType, index, context);
       });
-      // Union 타입 문자열 생성
-      const actualUnionString = finalMembers
-        .map((member) => this.extractTypeString(member))
-        .join(" | ");
 
       return {
         type: "union",
         children: finalMembers,
         metadata: {
-          finalTypeString: actualUnionString,
+          finalTypeString: context.checker.typeToString(unionType),
         },
       };
     } else {
@@ -272,7 +268,6 @@ export class UnionTypeHandler implements TypeHandler {
         prop,
         prop.valueDeclaration || prop.declarations?.[0]!
       );
-      const propTypeString = context.checker.typeToString(propType);
 
       const optional = !!(prop.flags & ts.SymbolFlags.Optional);
       let readonly = false;
@@ -351,6 +346,13 @@ export class UnionTypeHandler implements TypeHandler {
       typeName = declaration.name.text;
     }
 
+    // 참조 타입이 실제로 객체 구조를 가지는지 확인
+    if (memberType.getProperties && memberType.getProperties().length > 0) {
+      // 객체 구조로 확장 - 이때 type을 "object"로 설정
+      return this.delegateToObjectHandler(memberType, context);
+    }
+
+    // 단순 참조 타입
     const structure: TypeStructure = {
       type: "reference",
       name: `[${typeName}]`,
@@ -431,6 +433,8 @@ export class UnionTypeHandler implements TypeHandler {
         metadata: { finalTypeString: context.checker.typeToString(propType) },
       };
     }
+
+    // 2. Union 타입인 경우
     if (propType.isUnion()) {
       const unionMembers = propType.types.map(
         (memberType: ts.Type, i: number) =>
@@ -443,6 +447,22 @@ export class UnionTypeHandler implements TypeHandler {
       };
     }
 
+    // 3. 객체 타입인 경우
+    if (this.isObjectType(propType)) {
+      return this.delegateToObjectHandler(propType, context);
+    }
+
+    // 4. 배열 타입인 경우
+    if (this.isArrayType(propType, context.checker.typeToString(propType))) {
+      return this.delegateToArrayHandler(propType, context);
+    }
+
+    // 5. 참조 타입인 경우
+    if (this.isReferenceType(propType)) {
+      return this.delegateToReferenceHandler(propType, context);
+    }
+
+    // 6. 기본 처리
     return this.analyzeAndProcessMember(propType, 0, context);
   }
 

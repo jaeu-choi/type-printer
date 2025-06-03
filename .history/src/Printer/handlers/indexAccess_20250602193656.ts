@@ -78,6 +78,7 @@ export class IndexAccessHandler implements TypeHandler {
     indexNode: ts.IndexedAccessTypeNode,
     context: TypeCollectionContext
   ): TypeStructure[] {
+    console.log("=== extractNominalProcess 시작 ===");
     const process: TypeStructure[] = [];
 
     // 1. 객체 타입 참조 정보
@@ -169,6 +170,7 @@ export class IndexAccessHandler implements TypeHandler {
 
         return memberResult;
       });
+
       // FIXED: Union 결과에 올바른 finalTypeString 설정
       const memberStrings = finalMembers.map((member) => {
         if (member.value) return member.value;

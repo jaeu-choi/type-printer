@@ -260,6 +260,12 @@ export class TypeAliasPrinter {
         structure.metadata = { finalTypeString };
       }
     }
+    // 최종 타입 정보 추가
+    if (structure.metadata) {
+      structure.metadata.finalTypeString = finalTypeString;
+    } else {
+      structure.metadata = { finalTypeString };
+    }
 
     return {
       kind: AnalyzableKind.TYPEALIAS,

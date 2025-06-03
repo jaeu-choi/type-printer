@@ -30,7 +30,25 @@ export class TypeFormatter {
   }
 
   private formatResultView(structure: TypeStructure, typeName: string): string {
+    console.log("=== formatter.ts formatResultView DEBUG ===");
+    console.log("받은 structure:", JSON.stringify(structure, null, 2));
+    console.log("structure.type:", structure.type);
+    console.log("structure.computedResult:", structure.computedResult);
+    console.log(
+      "structure.metadata?.finalTypeString:",
+      structure.metadata?.finalTypeString
+    );
+
     // 최종 계산 결과만 표시
+    if (
+      (structure.type === "union" || structure.type === "intersection") &&
+      structure.children &&
+      structure.children.length > 0
+    ) {
+      console.log("✓ Union/Intersection children 직접 사용");
+      console.log("children count:", structure.children.length);
+      return this.formatStructure(structure, false, 0);
+    }
     if (structure.computedResult) {
       console.log("✓ computedResult 사용");
       return this.formatStructure(structure.computedResult, false, 0);
@@ -296,11 +314,23 @@ export class TypeFormatter {
     label: string,
     propertyNameOffset: number = 0
   ): string {
+    console.log("=== formatUnionOrIntersection 디버깅 ===");
+    console.log("label:", label);
+    console.log("expanded:", expanded);
+    console.log("structure.children?.length:", structure.children?.length);
+    console.log("structure.computedResult:", !!structure.computedResult);
+    console.log(
+      "structure.metadata?.finalTypeString:",
+      structure.metadata?.finalTypeString
+    );
+
     if (!structure.children || structure.children.length === 0) {
+      console.log("✗ children이 없음, label 반환");
       return label;
     }
 
     if (expanded) {
+      console.log("✓ expanded 모드 처리");
       // Union/Intersection 멤버들을 적절한 들여쓰기로 포맷팅
       const memberIndent = this.getIndent(depth + 1);
       const childrenFormatted = structure.children
@@ -320,8 +350,10 @@ export class TypeFormatter {
 
       return `${label}\n${childrenFormatted}`;
     } else {
+      console.log("✓ 기본 모드 처리");
       // 기본 모드에서는 computedResult나 finalTypeString 사용
       if (structure.computedResult) {
+        console.log("✓ computedResult 사용");
         return this.formatStructure(
           structure.computedResult,
           false,
@@ -329,9 +361,14 @@ export class TypeFormatter {
           propertyNameOffset
         );
       } else if (structure.metadata?.finalTypeString) {
+        console.log(
+          "✓ finalTypeString 사용:",
+          structure.metadata.finalTypeString
+        );
         const indent = this.getIndentWithOffset(depth, propertyNameOffset);
         return `${indent}${structure.metadata.finalTypeString}`;
       } else {
+        console.log("✓ children 직접 처리");
         const memberIndent = this.getIndent(depth + 1);
         const childrenFormatted = structure.children
           .map((child) => {

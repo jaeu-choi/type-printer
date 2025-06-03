@@ -78,6 +78,7 @@ export class IndexAccessHandler implements TypeHandler {
     indexNode: ts.IndexedAccessTypeNode,
     context: TypeCollectionContext
   ): TypeStructure[] {
+    console.log("=== extractNominalProcess 시작 ===");
     const process: TypeStructure[] = [];
 
     // 1. 객체 타입 참조 정보
@@ -169,6 +170,7 @@ export class IndexAccessHandler implements TypeHandler {
 
         return memberResult;
       });
+
       // FIXED: Union 결과에 올바른 finalTypeString 설정
       const memberStrings = finalMembers.map((member) => {
         if (member.value) return member.value;
@@ -561,11 +563,14 @@ export class IndexAccessHandler implements TypeHandler {
         context
       );
       if (!typeDeclaration) {
+        console.log("typeDeclaration을 찾을 수 없음");
         return [];
       }
 
       // ✨ NEW: Union 인덱스 타입 처리
       if (ts.isUnionTypeNode(indexNode.indexType)) {
+        console.log("✓ Union 인덱스 감지:", indexNode.indexType.getText());
+
         const allResults: Array<{ typeName?: string; typeNode?: ts.TypeNode }> =
           [];
 
@@ -597,21 +602,25 @@ export class IndexAccessHandler implements TypeHandler {
               );
             }
 
+            console.log(`    → ${memberResults.length}개 결과 추출`);
             allResults.push(...memberResults);
           }
         }
 
+        console.log(`✓ Union 인덱스 총 ${allResults.length}개 결과 반환`);
         return allResults;
       }
 
       // 기존 단일 리터럴 처리
       if (!ts.isLiteralTypeNode(indexNode.indexType)) {
+        console.log("indexType이 LiteralTypeNode가 아님");
         return [];
       }
 
       const propertyName = indexNode.indexType.literal
         .getText()
         .replace(/['"]/g, "");
+      console.log("propertyName:", propertyName);
 
       if (ts.isInterfaceDeclaration(typeDeclaration)) {
         return this.extractFromInterface(typeDeclaration, propertyName);
@@ -624,6 +633,7 @@ export class IndexAccessHandler implements TypeHandler {
 
       return [];
     } catch (error) {
+      console.log("Debug - Error extracting original type info:", error);
       return [];
     }
   }
@@ -642,6 +652,7 @@ export class IndexAccessHandler implements TypeHandler {
         }
       }
     }
+    console.log(`찾지 못함: ${propertyName}`);
     return [];
   }
 
@@ -659,6 +670,7 @@ export class IndexAccessHandler implements TypeHandler {
         }
       }
     }
+    console.log(`찾지 못함: ${propertyName}`);
     return [];
   }
 
@@ -679,6 +691,7 @@ export class IndexAccessHandler implements TypeHandler {
         return { typeNode: unionMember };
       });
     } else if (ts.isTypeReferenceNode(typeNode)) {
+      console.log("Reference 타입 노드 처리");
       return [
         {
           typeName: typeNode.typeName.getText(),

@@ -215,24 +215,10 @@ type some = {
 };
 
 type someValue = some["email" | "age" | "address"];
-// printer.printType("someValue");
+printer.printType("someValue");
 // |---{
 //   |---age: number;
 //   |---email: {
 //              |---name: number;
 //              };
 // |---}
-
-type Response = {
-  data: {
-    user: {
-      name: string;
-      roles: ("admin" | "user")[];
-    };
-  };
-  status: number;
-};
-
-type RolesArray = Response["data"]["user"]["roles"];
-
-printer.printType("RolesArray");

@@ -215,7 +215,7 @@ type some = {
 };
 
 type someValue = some["email" | "age" | "address"];
-// printer.printType("someValue");
+printer.printType("someValue");
 // |---{
 //   |---age: number;
 //   |---email: {
@@ -232,7 +232,3 @@ type Response = {
   };
   status: number;
 };
-
-type RolesArray = Response["data"]["user"]["roles"];
-
-printer.printType("RolesArray");

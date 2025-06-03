@@ -227,7 +227,7 @@ type Response = {
   data: {
     user: {
       name: string;
-      roles: ("admin" | "user")[];
+      roles: string;
     };
   };
   status: number;

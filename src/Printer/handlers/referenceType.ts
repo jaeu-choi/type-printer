@@ -286,11 +286,41 @@ export class ReferenceTypeHandler implements TypeHandler {
   ): TypeStructure {
     const propTypeString = context.checker.typeToString(propType);
 
-    // Union 타입인 경우
+    // 1. Primitive 타입 먼저 체크 (가장 중요!)
+    const isPrimitive = !!(
+      propType.flags &
+      (ts.TypeFlags.String |
+        ts.TypeFlags.Number |
+        ts.TypeFlags.Boolean |
+        ts.TypeFlags.StringLiteral |
+        ts.TypeFlags.NumberLiteral |
+        ts.TypeFlags.BooleanLiteral |
+        ts.TypeFlags.BigIntLiteral |
+        ts.TypeFlags.TemplateLiteral |
+        ts.TypeFlags.Null |
+        ts.TypeFlags.Undefined |
+        ts.TypeFlags.Void |
+        ts.TypeFlags.Any |
+        ts.TypeFlags.Never |
+        ts.TypeFlags.Unknown |
+        ts.TypeFlags.BigInt |
+        ts.TypeFlags.ESSymbol)
+    );
+
+    if (isPrimitive) {
+      return {
+        type: "primitive",
+        value: propTypeString,
+        metadata: { finalTypeString: propTypeString },
+      };
+    }
+
+    // 2. Union 타입인 경우
     if (propType.isUnion()) {
       const unionMembers = propType.types.map((memberType) => {
         const memberString = context.checker.typeToString(memberType);
 
+        // Union 멤버가 객체인지 확인
         if (memberType.getProperties && memberType.getProperties().length > 0) {
           return this.createFinalObjectStructure(memberType, context);
         } else {
@@ -309,31 +339,89 @@ export class ReferenceTypeHandler implements TypeHandler {
       };
     }
 
-    // 객체 타입인 경우
-    if (propType.getProperties && propType.getProperties().length > 0) {
-      return this.createFinalObjectStructure(propType, context);
-    }
-
-    // 배열 타입인 경우
+    // 3. 배열 타입인 경우 (객체보다 먼저)
     const typeArgs = context.checker.getTypeArguments(
       propType as ts.TypeReference
     );
     if (typeArgs && typeArgs.length > 0 && propTypeString.endsWith("[]")) {
-      const elementType = context.checker.typeToString(typeArgs[0]);
-      return {
-        type: "array",
-        children: [
-          {
-            type: "primitive",
-            value: elementType,
-            metadata: { finalTypeString: elementType },
-          },
-        ],
-        metadata: { finalTypeString: propTypeString },
-      };
+      const elementType = typeArgs[0];
+      const elementTypeString = context.checker.typeToString(elementType);
+
+      // 배열 원소가 객체인지 확인
+      if (elementType.getProperties && elementType.getProperties().length > 0) {
+        const elementStructure = this.createFinalObjectStructure(
+          elementType,
+          context
+        );
+        return {
+          type: "array",
+          children: [elementStructure],
+          metadata: { finalTypeString: propTypeString },
+        };
+      } else {
+        return {
+          type: "array",
+          children: [
+            {
+              type: "primitive",
+              value: elementTypeString,
+              metadata: { finalTypeString: elementTypeString },
+            },
+          ],
+          metadata: { finalTypeString: propTypeString },
+        };
+      }
     }
 
-    // 기본: primitive 타입
+    // 4. 실제 객체 타입 체크 (사용자 정의 객체만)
+    const properties = propType.getProperties();
+    if (properties.length > 0 && properties.length <= 50) {
+      // 내장 타입이 아닌 실제 사용자 정의 객체만 처리
+      return this.createFinalObjectStructure(propType, context);
+    }
+
+    // 5. 참조 타입인 경우 (사용자 정의 타입)
+    if (propType.symbol && propType.symbol.declarations) {
+      const declaration = propType.symbol.declarations[0];
+      let typeName = "Unknown";
+
+      if (ts.isTypeAliasDeclaration(declaration) && declaration.name) {
+        typeName = declaration.name.text;
+      } else if (ts.isInterfaceDeclaration(declaration) && declaration.name) {
+        typeName = declaration.name.text;
+      } else if (ts.isClassDeclaration(declaration) && declaration.name) {
+        typeName = declaration.name.text;
+      }
+
+      // 내장 타입 체크
+      if (this.isBuiltinType(typeName)) {
+        return {
+          type: "reference",
+          name: typeName,
+          metadata: {
+            isBuiltin: true,
+            finalTypeString: propTypeString,
+          },
+        };
+      }
+
+      // 사용자 정의 타입인 경우 - 객체 구조로 확장
+      if (properties.length > 0) {
+        return this.createFinalObjectStructure(propType, context);
+      } else {
+        return {
+          type: "reference",
+          name: `[${typeName}]`,
+          metadata: {
+            isBuiltin: false,
+            finalTypeString: propTypeString,
+            originalTypeName: typeName,
+          },
+        };
+      }
+    }
+
+    // 6. 기본 fallback - 복잡한 타입은 문자열로
     return {
       type: "primitive",
       value: propTypeString,
