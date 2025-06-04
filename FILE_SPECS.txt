@@ -1,0 +1,120 @@
+# type-printer 코드베이스 파일별 명세
+
+이 문서는 `type-printer` 저장소의 주요 소스 파일에 등장하는 클래스와 메소드, 유틸리티 함수들을 간략히 정리한 것입니다.
+
+---
+
+## src/Printer/printer.ts
+
+**클래스**
+- `TypeAliasPrinter`
+  - `constructor(indexFilePath: string)`
+  - `printType(name: string, options?: PrintOptions): void`
+  - `parseTypeRequest(input: string): { typeName: string; isInstantiated: boolean; typeArgs: string[] }`
+  - `parseTypeArguments(argsString: string): string[]`
+  - `createGenericContext(typeName: string, typeArgs: string[]): Map<string, TypeStructure>`
+  - `collectMappingAnalysisInfo(mappedAnalysis, targetTypeName)` – 매핑 타입 분석
+  - `simulateMappingIterations(mappedDecl, typeArgDefinitions, finalType)` – 매핑 과정 재현
+  - `analyzeTypeArgument(typeName: string)`
+  - `analyzeInterfaceProperties(interfaceDecl: ts.InterfaceDeclaration)`
+  - `analyzeTypeAliasProperties(typeDecl: ts.TypeAliasDeclaration)`
+  - `findTypeDeclaration(name: string)`
+  - `collectInterfaceInfo(name: string, context: TypeCollectionContext): TypeInfo`
+  - `collectInterfaceStructure(node: ts.InterfaceDeclaration, context: TypeCollectionContext, finalTypeString: string): TypeStructure`
+  - `collectTypeAliasInfo(name: string, context: TypeCollectionContext): TypeInfo`
+  - `identifyKind(name: string): AnalyzableKind`
+  - `findSymbolByName(name: string): ts.Symbol | undefined`
+
+---
+
+## src/Printer/formatter.ts
+
+**클래스**
+- `TypeFormatter`
+  - `format(info: TypeInfo, options?: PrintOptions, mappingInfo?: any): string`
+  - `formatMappingAnalysis(structure: TypeStructure, typeName: string, mappingInfo: any): string`
+  - `formatResultView(structure: TypeStructure, typeName: string): string`
+  - `formatExpandedTreeView(structure: TypeStructure, typeName: string): string`
+  - `formatTreeStructure(structure: TypeStructure, expanded: boolean, depth: number, isLastInParent?: boolean, currentPrefix?: string): string`
+  - `formatUnionTree(structure: TypeStructure, expanded: boolean, depth: number, currentPrefix?: string): string`
+  - `formatIntersectionTree(structure: TypeStructure, expanded: boolean, depth: number, currentPrefix?: string): string`
+  - `formatFunctionTree(structure: TypeStructure, expanded: boolean, depth: number, currentPrefix?: string): string`
+  - `formatObjectTree(structure: TypeStructure, expanded: boolean, depth: number, currentPrefix?: string): string`
+  - `addWithPrefix(parts: string[], content: string, prefix: string): void`
+  - `joinWithPrefix(lines: string[], prefix: string): string`
+  - `getChildPrefix(currentPrefix: string, isLastChild: boolean): string`
+  - `calculateOptimalWidth(info: TypeInfo): number`
+  - `formatHeader(name: string, originalSource: string): string`
+  - `formatMappedTree(structure: TypeStructure, expanded: boolean, depth: number, currentPrefix?: string): string`
+  - `formatLongType(typeString: string, baseIndent: string): string`
+  - `formatResultObject(structure: TypeStructure, indent?: number): string[]`
+
+---
+
+## src/Printer/types.ts
+
+**주요 인터페이스/열거형**
+- `PrintOptions` – 출력 옵션 정의
+- `AnalyzableKind` – 분석 대상 종류(enum)
+- `TypeStructure` – 타입 구조 표현 객체
+- `ObjectProperty` – 객체 프로퍼티 정의
+- `TypeInfo` – 최종 출력 정보 구조
+- `TypeCollectionContext` – 타입 수집 컨텍스트
+- `TypeHandler` – 각 핸들러의 인터페이스
+
+---
+
+## src/Printer/handlers
+핸들러들은 `TypeStructureCollector`에 의해 사용되며, 각 타입 노드를 처리하는 역할을 합니다.
+
+### index.ts
+- `TypeStructureCollector` 클래스
+  - 생성자에서 모든 핸들러 인스턴스를 등록
+  - `collect(node, context): TypeStructure` – 노드에 맞는 핸들러 호출
+  - `collectUnionMembers(types, context): TypeStructure[]`
+  - `collectIntersectionMembers(types, context): TypeStructure[]`
+  - `collectArrayElement(elementType, context): TypeStructure`
+  - `collectPropertyType(propertyType, context): TypeStructure`
+  - `collectReferenceExpansion(declaration, typeName, context): TypeStructure | null`
+  - `createFinalTypeStructure(finalType, context): TypeStructure` – TypeChecker 기반 최종 구조 생성
+  - `createFinalArrayStructure(arrayType, context): TypeStructure`
+  - `createFinalObjectStructure(objectType, context): TypeStructure`
+  - `createFinalReferenceStructure(refType, context): TypeStructure`
+  - `createFinalFunctionStructure(functionType, context): TypeStructure`
+
+### 기타 핸들러 파일
+각 파일은 `TypeHandler` 인터페이스를 구현합니다.
+- `arrayType.ts` – `ArrayTypeHandler`
+- `conditionalType.ts` – `ConditionalTypeHandler`
+- `indexAccess.ts` – `IndexAccessHandler`
+- `intersectionType.ts` – `IntersectionTypeHandler`
+- `mappedType.ts` – `MappedTypeHandler`
+- `objectLiteral.ts` – `ObjectLiteralTypeHandler`
+- `operatorType.ts` – `OperatorTypeHandler`
+- `primitiveType.ts` – `PrimitiveTypeHandler`
+- `referenceType.ts` – `ReferenceTypeHandler`
+- `unionType.ts` – `UnionTypeHandler`
+- `functionType.ts` – `FunctionTypeHandler`
+- `fallback.ts` – `FallbackTypeHandler`
+- `KeyOfProcessor.ts` – `KeyOfProcessor` 유틸리티 (keyof 처리)
+
+각 핸들러는 `canHandle(node)`와 `handle(node, context)` 메소드를 기본으로 가지며, 타입에 따라 필요한 보조 메소드들이 정의되어 있습니다.
+
+---
+
+## src/improved-printer.ts
+
+단일 파일로 작성된 대형 예제입니다. 위의 핸들러들과 `TypeStructureCollector`, `TypeFormatter`, `TypeAliasPrinter`가 모두 포함되어 있으며, 구조와 역할은 `src/Printer` 폴더의 구현과 유사합니다. 테스트 및 실험용 코드로 사용됩니다.
+
+---
+
+## src/index.ts, src/index2.ts, src/index.js
+테스트용 타입 정의와 `TypeAliasPrinter` 사용 예시를 주석 형태로 포함합니다. 실제 실행 로직은 대부분 주석 처리되어 있습니다.
+
+---
+
+## 기타 파일
+- `package.json` – 의존성과 빌드 스크립트 정의
+- `tsconfig.json` – TypeScript 컴파일 옵션 설정
+- `dist/` – 컴파일 결과물(.d.ts 등)
+
