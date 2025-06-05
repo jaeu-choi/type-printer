@@ -406,12 +406,12 @@ type bar2sKey = keyof bar2;
 // type Remapped = RemapKeys<From, Map>;
 
 // printer.printType("Remapped", {
-// expanded: true,
-// mappedAnalysis: {
-//   enabled: true,
-//   pattern: "RemapKeys",
-//   typeArgs: ["From", "Map"],
-// },
+//   expanded: true,
+//   mappedAnalysis: {
+//     enabled: true,
+//     pattern: "RemapKeys",
+//     typeArgs: ["From", "Map"],
+//   },
 // });
 
 type Flatten<T> = {

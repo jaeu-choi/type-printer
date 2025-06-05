@@ -406,38 +406,45 @@ type bar2sKey = keyof bar2;
 // type Remapped = RemapKeys<From, Map>;
 
 // printer.printType("Remapped", {
-// expanded: true,
-// mappedAnalysis: {
-//   enabled: true,
-//   pattern: "RemapKeys",
-//   typeArgs: ["From", "Map"],
-// },
+//   expanded: true,
+//   mappedAnalysis: {
+//     enabled: true,
+//     pattern: "RemapKeys",
+//     typeArgs: ["From", "Map"],
+//   },
 // });
 
-type Flatten<T> = {
-  [K in keyof T]: T[K] extends object
-    ? {
-        [K2 in keyof T[K] as `${Extract<K, string>}.${Extract<
-          K2,
-          string
-        >}`]: T[K][K2];
-      }
-    : { [P in Extract<K, string>]: T[K] };
-}[keyof T];
+// type Flatten<T> = {
+//   [K in keyof T]: T[K] extends object
+//     ? {
+//         [K2 in keyof T[K] as `${Extract<K, string>}.${Extract<
+//           K2,
+//           string
+//         >}`]: T[K][K2];
+//       }
+//     : { [P in Extract<K, string>]: T[K] };
+// }[keyof T];
 
-type Nested = {
-  user: {
-    id: number;
-    name: string;
-  };
-  active: boolean;
-};
-type flat = Flatten<Nested>;
+// type Nested = {
+//   user: {
+//     id: number;
+//     name: string;
+//   };
+//   active: boolean;
+// };
+// type flat = Flatten<Nested>;
 
-printer.printType("flat", { expanded: true });
+// printer.printType("flat", {
+//   expanded: true,
+//   mappedAnalysis: {
+//     enabled: true,
+//     pattern: "Flatten",
+//     typeArgs: ["Nested"],
+//   },
+// });
 
 type Simple<T> = { [K in keyof T]: T[K] };
 type User = { name: string; age: number };
 type SimpleUser = Simple<User>;
 
-printer.printType("SimpleUser", { expanded: true });
+printer.printType("SimpleUser");

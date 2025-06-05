@@ -441,3 +441,4 @@ type User = { name: string; age: number };
 type SimpleUser = Simple<User>;
 
 printer.printType("SimpleUser", { expanded: true });
+printer.printType("Flatten<Nested>");

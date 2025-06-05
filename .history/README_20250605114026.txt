@@ -1,0 +1,76 @@
+# 이문제에 대답할수 있나요?
+
+## 1.
+type Role = string;
+type Role2 = number;
+type Role3 = Role & Role2; // 답 never;
+
+
+🔄 리팩터링 계획 요약
+🚨 현재 문제점
+
+코드 중복: IndexAccessHandler 800+ 라인, 각 핸들러마다 Union/Array/Object 처리 로직 중복
+핸들러 비대화: 새 타입 추가할 때마다 핸들러 몸집이 커져서 Claude도 이해 못함
+일관성 부족: 이미 UnionHandler 등이 있는데도 각 핸들러에서 자체 구현
+
+🎯 리팩터링 목표
+"각 핸들러는 자기 타입의 구조 파악만, 나머지는 TypeStructureCollector에 위임"
+🏗️ 새로운 설계
+1. 역할 분담
+
+핸들러: 자기 타입의 구조만 파악 (20-30줄로 축소)
+TypeStructureCollector: 재귀 조정 + 핸들러 라우팅
+
+2. 재귀 위임 패턴
+typescriptexport class UnionTypeHandler {
+  constructor(private readonly collector: TypeStructureCollector) {}
+  
+  handle(node: ts.TypeNode, context: TypeCollectionContext): TypeStructure {
+    const unionNode = node as ts.UnionTypeNode;
+    const elements = unionNode.types.map((elementNode) => {
+      // 핵심: 각 요소를 collector에 다시 위임
+      return this.collector.collect(elementNode, context);
+    });
+    return { type: "union", children: elements, ... };
+  }
+}
+3. 원자 단위 분해
+
+원자 타입 (재귀 종료): string, number, "hello", 42 등
+복합 타입 (계속 분해): Union, Array, Object, IndexAccess 등
+TypeStructureCollector가 원자 타입 만날 때까지 재귀적으로 분해
+
+4. 순환 의존성 해결
+typescript// collector.ts
+export class TypeStructureCollector {
+  constructor() {
+    this.handlers = [
+      new UnionTypeHandler(this), // this 전달로 해결
+      new IndexAccessHandler(this),
+      // ...
+    ];
+  }
+}
+📈 기대 효과
+
+코드량 95% 감소: IndexAccessHandler 800줄 → 50줄
+중복 완전 제거: 각 타입 처리 로직이 해당 핸들러에만 존재
+확장성: 새 타입 추가 시 구조만 정의하면 됨
+유지보수성: 버그 수정이나 개선이 한 곳에서만
+Claude 이해도 향상: 각 파일이 작고 명확해짐
+
+🔄 처리 흐름 예시
+Response["data"]["user"]["roles"]
+  ↓
+IndexAccessHandler: 구조 파악 → collector.collect(각 부분)
+  ↓
+ReferenceHandler: Response 구조 → collector.collect(프로퍼티들)  
+  ↓
+ArrayHandler: roles[] 구조 → collector.collect(원소 타입)
+  ↓
+UnionHandler: "admin" | "user" → collector.collect(각 리터럴)
+  ↓
+LiteralHandler: "admin", "user" ✅ 원자 타입 도달, 재귀 종료
+핵심은 "구조 파악 vs 타입 분석"의 완전한 분리입니다!
+
+

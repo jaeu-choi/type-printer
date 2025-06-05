@@ -440,4 +440,4 @@ type Simple<T> = { [K in keyof T]: T[K] };
 type User = { name: string; age: number };
 type SimpleUser = Simple<User>;
 
-printer.printType("SimpleUser", { expanded: true });
+// printer.printType("SimpleUser", { expanded: true });
