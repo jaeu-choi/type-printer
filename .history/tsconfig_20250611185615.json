@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist", // 컴파일된 JS 파일 저장 위치
+    "rootDir": "./src", // TypeScript 원본 파일 위치
+    "target": "ES2015", // 컴파일 결과의 ECMAScript 버전
+    "module": "NodeNext", // 모듈 시스템 (Node.js 호환)
+    "moduleResolution": "nodenext",
+    "strict": true, // 엄격한 타입 검사 활성화
+    "esModuleInterop": true, // ES 모듈 호환성 활성화
+    "skipLibCheck": true, // 외부 라이브러리 타입 검사 생략
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "types": ["node"] // ✅ Node.js 타입 정의 파일 로드
+  },
+  "include": ["src/**/*.ts", "src/test-runner.tsr, "test/test-runner.ts".ts"], // 컴파일 대상 파일 지정
+  "exclude": ["node_modules"] // 제외할 파일 설정
+}

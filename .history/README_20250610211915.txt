@@ -1,0 +1,27 @@
+. 구식 Collector 기반 핸들러들
+- functionType.ts        ❌ (구식 collector 방식)
+- KeyOfProcessor.ts      ❌ (구식 collector 방식) 
+- unionType.ts          ❌ (구식 collector 방식)
+- operatorType.ts       ❌ (구식 collector 방식)
+- intersectionType.ts   ❌ (구식 collector 방식)
+- indexAccess.ts        ❌ (구식 collector 방식)
+- fallback.ts           ❌ (구식 collector 방식)
+- arrayType.ts          ❌ (구식 collector 방식, arrayTypeHandler.ts로 대체됨)
+2. 주석처리된 레거시 파일들
+- mappedType.ts         ❌ (전체가 주석처리됨)
+- index.ts             ❌ (전체가 주석처리된 구식 collector)
+- typeAnalyzer.ts      ❌ (전체가 주석처리됨)
+- mappingAnalyzer.ts   ❌ (전체가 주석처리됨)
+- typeLookupService.ts ❌ (전체가 주석처리됨)
+- genericResolver.ts   ❌ (전체가 주석처리됨)
+
+
+이제 우리 유니온타입을 처리하는 핸들러만들건데, 근데 너 기억하고있을지 모르겠지만, 우리 목적은 실제타입 연산의 결과는 컴파일러가 어차피 쉽게 해줘, 근데 우리는 교육목적으로 실제 타입의 추론과정을 이터레이션으로 IR로 만들어서 출력해주는게 목표라고 그래서 실제 결과(컴파일러) 와 이터레이션을 만들 수있는 정보를 각 핸들러가 자기 호출에서 로직처리하면서 IR (TypeNode)에 기록해야해 알지? 기억하지 ? 
+
+
+🚀 향후 확장:
+새 연산자 추가시 단 3단계:
+
+InferTypeHandler.ts 생성
+OperatorTypeHandler에 import 추가
+detectOperatorType()과 routeToSpecializedHandler()에 케이스 추가

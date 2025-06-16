@@ -1,0 +1,16 @@
+. 구식 Collector 기반 핸들러들
+- functionType.ts        ❌ (구식 collector 방식)
+- KeyOfProcessor.ts      ❌ (구식 collector 방식) 
+- unionType.ts          ❌ (구식 collector 방식)
+- operatorType.ts       ❌ (구식 collector 방식)
+- intersectionType.ts   ❌ (구식 collector 방식)
+- indexAccess.ts        ❌ (구식 collector 방식)
+- fallback.ts           ❌ (구식 collector 방식)
+- arrayType.ts          ❌ (구식 collector 방식, arrayTypeHandler.ts로 대체됨)
+2. 주석처리된 레거시 파일들
+- mappedType.ts         ❌ (전체가 주석처리됨)
+- index.ts             ❌ (전체가 주석처리된 구식 collector)
+- typeAnalyzer.ts      ❌ (전체가 주석처리됨)
+- mappingAnalyzer.ts   ❌ (전체가 주석처리됨)
+- typeLookupService.ts ❌ (전체가 주석처리됨)
+- genericResolver.ts   ❌ (전체가 주석처리됨)

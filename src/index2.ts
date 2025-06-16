@@ -1,5 +1,5 @@
 import { TypeAliasPrinter } from "./Printer/printer";
-const printer = new TypeAliasPrinter("src/index2.ts");
+// const printer = new TypeAliasPrinter("src/index2.ts");
 
 // // ===== 테스트용 타입 정의들 =====
 
@@ -414,30 +414,316 @@ type bar2sKey = keyof bar2;
 // },
 // });
 
-type Flatten<T> = {
-  [K in keyof T]: T[K] extends object
-    ? {
-        [K2 in keyof T[K] as `${Extract<K, string>}.${Extract<
-          K2,
-          string
-        >}`]: T[K][K2];
-      }
-    : { [P in Extract<K, string>]: T[K] };
-}[keyof T];
+// type Flatten<T> = {
+//   [K in keyof T]: T[K] extends object
+//     ? { //         [K2 in keyof T[K] as `${Extract<K, string>}.${Extract<
+//           K2,
+//           string
+//         >}`]: T[K][K2];
+//       }
+//     : { [P in Extract<K, string>]: T[K] };
+// }[keyof T];
 
-type Nested = {
-  user: {
-    id: number;
-    name: string;
-  };
-  active: boolean;
-};
-type flat = Flatten<Nested>;
+// type Nested = {
+//   user: {
+//     id: number;
+//     name: string;
+//   };
+//   active: boolean;
+// };
+// type flat = Flatten<Nested>;
 
-printer.printType("flat", { expanded: true });
+// printer.printType("flat", { expanded: true });
 
-type Simple<T> = { [K in keyof T]: T[K] };
-type User = { name: string; age: number };
-type SimpleUser = Simple<User>;
+// type Simple<T> = { [K in keyof T]: T[K] };
+// type User = { name: string; age: number };
+// type SimpleUser = Simple<User>;
 
-printer.printType("SimpleUser", { expanded: true });
+// printer.printType("SimpleUser", { expanded: true });
+
+// type myPrimitiveType = "limid";
+
+// printer.printType("myPrimitiveType", { expanded: true });
+
+// type MyStringLiteral = "hello";
+
+// printer.printType("MyStringLiteral");
+// type SimpleString = "hello"; // TemplateTypeHandler → LiteralTypeHandler
+// type SimpleNumber = 42; // TemplateTypeHandler → LiteralTypeHandler
+// type Template<T> = `hello ${T}`; // TemplateTypeHandler 자체 처리
+// type Complex = `${string}-${number}`; // TemplateTypeHandler 자체 처리
+
+// printer.printType("SimpleString", { expanded: true });
+// printer.printType("Template", { expanded: true });
+// type Props = {
+//   id: number;
+//   name: string;
+//   isActive: boolean;
+// };
+
+// 각 키에 대해 "onChange:id", "onChange:name", ... 같은 타입 만들기
+// type ChangeEventNames = `onChange:${keyof Props}`;
+// type IsString<T> = T extends string ? "yes" : "no";
+
+// type D = IsString<string>; // "yes"
+// type F = IsString<number>; // "no
+
+// printer.printType("D");
+// printer.printType("F", { expanded: true });
+
+// // 1. 기본 조건부 제네릭 타입
+// type IsString<T> = T extends string ? "yes" : "no";
+// type IsNumber<T> = T extends number ? "true" : "false";
+
+// // 2. 제네릭 인스턴스들 (우리가 테스트할 타입들)
+// type D = IsString<string>; // "yes"
+// type F = IsString<number>; // "no"
+// type G = IsNumber<42>; // "true"
+// type H = IsNumber<string>; // "false"
+
+// // 3. 배열 제네릭
+// type MyArray<T> = T[];
+// type StringArray = MyArray<string>; // string[]
+// type NumberArray = MyArray<number>; // number[]
+
+// // 4. 객체 제네릭
+// type KeyValue<K, V> = {
+//   key: K;
+//   value: V;
+// };
+// type UserData = KeyValue<string, number>; // { key: string; value: number }
+// type Settings = KeyValue<string, boolean>; // { key: string; value: boolean }
+
+// // 5. 더 복잡한 조건부 타입
+// type NonNullable<T> = T extends null | undefined ? never : T;
+// type CleanString = NonNullable<string>; // string
+// type CleanStringOrNull = NonNullable<string | null>; // string
+
+// // 6. 중첩 제네릭
+// type Flatten<T> = T extends (infer U)[] ? U : T;
+// type FlattenedNumbers = Flatten<number[]>; // number
+// type FlattenedString = Flatten<string>; // string
+
+// function runGenericTests() {
+//   console.log("🧪 제네릭 처리 시스템 테스트 시작");
+//   console.log("=".repeat(60));
+
+//   const printer = new TypeAliasPrinter("src/index2.ts", { debugMode: true });
+
+//   // 기본 조건부 제네릭 테스트
+//   console.log("\n🔍 기본 조건부 제네릭 테스트");
+//   console.log("-".repeat(40));
+
+//   try {
+//     console.log("\n📋 D = IsString<string> 테스트:");
+//     printer.printType("D", { expanded: true });
+
+//     console.log("\n📋 F = IsString<number> 테스트:");
+//     printer.printType("F", { expanded: true });
+//   } catch (error) {
+//     console.error("❌ 기본 제네릭 테스트 실패:", error);
+//   }
+
+//   // 배열 제네릭 테스트
+//   console.log("\n🔍 배열 제네릭 테스트");
+//   console.log("-".repeat(40));
+
+//   try {
+//     console.log("\n📋 StringArray = MyArray<string> 테스트:");
+//     printer.printType("StringArray", { expanded: true });
+
+//     console.log("\n📋 NumberArray = MyArray<number> 테스트:");
+//     printer.printType("NumberArray", { expanded: true });
+//   } catch (error) {
+//     console.error("❌ 배열 제네릭 테스트 실패:", error);
+//   }
+
+//   // 객체 제네릭 테스트
+//   console.log("\n🔍 객체 제네릭 테스트");
+//   console.log("-".repeat(40));
+
+//   try {
+//     console.log("\n📋 UserData = KeyValue<string, number> 테스트:");
+//     printer.printType("UserData", { expanded: true });
+//   } catch (error) {
+//     console.error("❌ 객체 제네릭 테스트 실패:", error);
+//   }
+
+//   // 제네릭 처리 통계 출력
+//   console.log("\n📊 제네릭 처리 시스템 상태");
+//   console.log("-".repeat(40));
+
+//   try {
+//     const status = printer.getSystemStatus();
+//     console.log(`핸들러 개수: ${status.handlerCount}`);
+//     console.log("등록된 핸들러들:");
+//     status.handlers.forEach((h) => {
+//       console.log(`  - ${h.name} (우선순위: ${h.priority})`);
+//     });
+//   } catch (error) {
+//     console.error("❌ 시스템 상태 확인 실패:", error);
+//   }
+
+//   console.log("\n🎉 제네릭 테스트 완료!");
+// }
+
+// 실행
+// runGenericTests();
+// const printer = new TypeAliasPrinter("src/index2.ts");
+// type mytype = string;
+// 기본 조건부 타입
+// const printer = new TypeAliasPrinter("src/index2.ts");
+// type IsString2<T> = T extends string ? "yes" : "no";
+
+// // infer가 포함된 타입
+// type GetReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
+
+// // 배열 요소 추출
+// type ArrayElement<T> = T extends (infer U)[] ? U : never;
+
+// // 중첩 조건부 타입
+// type DeepCheck<T> = T extends string
+//   ? T extends "hello"
+//     ? "greeting"
+//     : "other string"
+//   : "not string";
+
+// type parma = "hello" | number;
+// type MyIsString = IsString<parma>;
+
+// type IsString<T> = T extends string ? true : false;
+
+// type A2 = IsString<string>; // true
+// type B2 = IsString<number>; // false
+
+// type FilterString<T> = T extends string ? T : never;
+
+// type Result = FilterString<string | number | boolean>; // string
+// printer.printType("Result", { expanded: true });
+// type ElementType<T> = T extends (infer U)[] ? U : T;
+
+// type A3 = ElementType<number[]>; // number
+// type B3 = ElementType<string>; // string
+
+// printer.printType("B3");
+const printer = new TypeAliasPrinter("src/index2.ts");
+
+type IsString2<T> = T extends string ? "yes" : "no";
+type parma = "hello" | number;
+type MyIsString = IsString2<parma>;
+
+// printer.printType("MyIsString");
+// import { TypeAliasPrinter } from "./printer";
+import { runAllTests } from "./Printer/handlers/setup";
+
+// const printer = new TypeAliasPrinter("./types.ts");
+
+// 테스트 실행
+runAllTests();
+
+// type isUnion = "string" | "number" | number;
+// printer.printType("isUnion");
+
+// types.ts에 추가
+// type Status = "pending" | "approved" | "rejected";
+// type MixedUnion = string | number | boolean | null;
+// type ComplexUnion = User | Admin | { type: "guest"; permissions: string[] };
+
+// printer.printType("MixedUnion", { expanded: true });
+
+// type ToArray<T> = T extends any ? T[] : never;
+// type DistributedResult = ToArray<string | number>; // string[] | number[]
+// printer.printType("DistributedResult", { expanded: true });
+// type NotDistributed<T> = [T] extends [string] ? true : false;
+
+// type B3 = NotDistributed<"a" | "b">;
+
+// printer.printType("B3", { expanded: true });
+// type Foo = { a: number };
+// type Bar = { b: string };
+// type AB = Foo & Bar;
+// type Keys = keyof AB; // "a" | "b"
+// type Foo = { name: string };
+// type Bar = { age: number };
+//
+// type C3 = Foo & Bar;
+// printer.printType("C3", { expanded: true });
+// type C4 = { name: string } & { age: number };
+// printer.printType("C4", { expanded: true });
+//
+// const foo: C4 = {
+//   name: "Jaue",
+//   age: 10,
+// };
+
+// type Impossible = string & number;
+// printer.printType("Impossible", { expanded: true });
+
+// type A5 = "a" | "b";
+// type B5 = "b" | "c";
+//
+// type C5 = A5 & B5;
+//
+// printer.printType("C5", { expanded: true });
+// type User = { name: string; age: number; id: string };
+// type UserKeys = keyof User;
+// printer.printType("UserKeys", { expanded: true });
+
+// type DirectKeys = keyof { name: string; age: number };
+// printer.printType("DirectKeys", { expanded: true });
+//
+// type EmptyKeys = keyof {};
+// printer.printType("EmptyKeys", { expanded: true });
+//
+// type OptionalKeys = keyof {
+//   name: string;
+//   age?: number;
+//   readonly id: string;
+// };
+// printer.printType("OptionalKeys", { expanded: true });
+// keyof 테스트 - OperatorTypeHandler → KeyofTypeHandler
+// type Keys = keyof { name: string; age: number };
+// printer.printType("Keys", { expanded: true });
+
+// // typeof 테스트 - OperatorTypeHandler → TypeofTypeHandler
+// const obj = { x: 10, y: "hello" };
+// type ObjType = typeof obj;
+// printer.printType("ObjType", { expanded: true });
+// type ElementType<T> = T extends (infer U)[] ? U : T;
+
+// type C2 = ElementType<string[]>; // string
+// type D2 = ElementType<number>; // number (배열 아님)
+
+// printer.printType("C2", { expanded: true });
+// printer.printType("D2", { expanded: true });
+
+// type ReturnTypeInfer<T> = T extends (...args: any[]) => infer R ? R : never;
+
+// type E = ReturnTypeInfer<() => boolean>; // boolean
+// type F = ReturnTypeInfer<string>; // never
+
+// printer.printType("E", { expanded: true });
+// printer.printType("F", { expanded: true });
+//
+type TestInfer<T> = T extends (...args: any[]) => infer R ? R : never;
+type Result = TestInfer<() => string>;
+//
+// // 실행해서 핸들러 체인 확인
+// printer.printType("Result", { expanded: true });
+// type DirectInfer = string extends infer R ? R : never;
+//
+// printer.printType("DirectInfer", { expanded: true });
+type ObjectTest<T> = T extends { name: string } ? "object" : "not-object";
+// { name: string } → ObjectTypeHandler 호출되어야 함
+
+// type UserTest<T> = T extends User ? "user" : "not-user";
+// User → ReferenceTypeHandler 호출되어야 함
+
+type ArrayTest<T> = T extends string[] ? "array" : "not-array";
+// string[] → ArrayTypeHandler 호출되어야 함
+
+type UnionTest<T> = T extends string | number ? "union" : "not-union";
+// string | number → UnionTypeHandler 호출되어야 함
+//
+type NonOBJ = ObjectTest<{ name: string }>;
+printer.printType("NonOBJ");
